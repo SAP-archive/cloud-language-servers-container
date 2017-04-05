@@ -3,7 +3,7 @@ applications:
 - name: LSP-JDT
   memory: 1024M
   instances: 1
-  path: target/LSPServer-0.0.1-SNAPSHOT.war
+  path: target/LSPServerCF-0.0.1-SNAPSHOT.war
 #  buildpack: https://github.com/cloudfoundry/java-buildpack.git
 #  buildpack: https://fake-java-buildpack.cfapps.sap.hana.ondemand.com/.git
   buildpack: https://github.com/PavelSosin/java-buildpack.git

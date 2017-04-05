@@ -31,7 +31,7 @@ maxFileSize=1024*1024*10,		// 10MB
 maxRequestSize=1024*1024*50)	// 50MB
 public class WSSynchronization extends HttpServlet {
 	private static final long serialVersionUID = 1L;
-	private static final String SAVE_DIR = System.getenv("HOME") + "/.java-buildpack/language_server_bin_exec_jdt/";
+	private static final String SAVE_DIR = System.getenv("HOME") + "/.java-buildpack/language_server_bin_exec_jdt/di_ws_root/";
 	private static final Logger LOG = Logger.getLogger(WSSynchronization.class.getName());
        
     /**
@@ -62,7 +62,8 @@ public class WSSynchronization extends HttpServlet {
 			fileName = new File(fileName).getName();
 			//part.write(savePath + File.separator + fileName);
 			String projPath = SAVE_DIR + fileName.substring(0, fileName.indexOf(".zip"));
-			String projectRoot = unzipProject(part.getInputStream(), new File(projPath));
+			//String projectRoot = unzipProject(part.getInputStream(), new File(projPath));
+			String projectRoot = unzipProject(part.getInputStream(), new File(SAVE_DIR));
 			response.getWriter().append("Uploaded at  " + projectRoot);
 		}
 
