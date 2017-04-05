@@ -64,6 +64,17 @@ public class WSSynchronization extends HttpServlet {
 			String projPath = SAVE_DIR + fileName.substring(0, fileName.indexOf(".zip"));
 			//String projectRoot = unzipProject(part.getInputStream(), new File(projPath));
 			String projectRoot = unzipProject(part.getInputStream(), new File(SAVE_DIR));
+			
+			// Create symbolic link
+			Path projectPath = Paths.get(projectRoot);
+			Path linkPath = Paths.get(System.getProperty("user.home") + "/" + projectRoot.substring(projectRoot.lastIndexOf('/', projectRoot.length() )+1 ));
+			try {
+				//LOG.info("CREATING LINK " + linkPath.toString() + " for " + projectRoot.substring(projectRoot.lastIndexOf('/',projectRoot.length())+1) + " Home " + System.getProperty("user.home") );
+			    Files.createSymbolicLink(linkPath, projectPath);
+			    LOG.info("PROJECT LINK " + linkPath.toString() + " for " + projectPath.toString() + " created.");
+			} catch (IOException | UnsupportedOperationException x ) {
+			    LOG.severe(x.toString());
+			}
 			response.getWriter().append("Uploaded at  " + projectRoot);
 		}
 
