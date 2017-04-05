@@ -1,12 +1,20 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>LSPServer</groupId>
-	<artifactId>LSPServer</artifactId>
+	<groupId>com.sap.lsp</groupId>
+	<artifactId>LSPServerCF</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>war</packaging>
 	<name>LSPServerEndPoint</name>
 	<description>LSP Server Endpoint for Isolated Cloud Container</description>
+	
+	<distributionManagement>
+		<snapshotRepository>
+			<id>deploy.snapshots</id>
+			<url>http://nexus.wdf.sap.corp:8081/nexus/content/repositories/deploy.snapshots/</url>
+		</snapshotRepository>
+	</distributionManagement>
+	
 	<build>
 		<sourceDirectory>src</sourceDirectory>
 		<plugins>
