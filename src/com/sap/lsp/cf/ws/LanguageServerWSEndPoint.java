@@ -31,6 +31,7 @@ import javax.servlet.annotation.WebListener;
 import javax.websocket.CloseReason;
 import javax.websocket.EndpointConfig;
 import javax.websocket.OnClose;
+import javax.websocket.OnError;
 import javax.websocket.OnMessage;
 import javax.websocket.OnOpen;
 import javax.websocket.RemoteEndpoint;
@@ -54,6 +55,8 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 	
 	public static final String BASE_DIR = "/home/vcap/app/.java-buildpack/";
 	public static final String ENV_LAUNCHER = "exec";
+	public static final String DEBUG_CLIENT = "debugclient";
+	
 	private final String launcherScript;
 	
 	private static ServletContext servletContext;
@@ -133,6 +136,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 	                bytesRead += readResult;
 	            }
 	            msgBuffer.append(CRLF).append(CRLF).append(new String(buffer));
+	            LOG.info("LSP sends " + msgBuffer.toString());
 	            remote.sendText(msgBuffer.toString());
 	            
 	    }
@@ -150,14 +154,17 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 			while(keepRunning && !thisThread.isInterrupted() ) {
 	            try {
 	                int c = out.read();
-	                if (c == -1)
+	                if (c == -1) {
 	                    // End of input stream has been reached
-	                    keepRunning = false;
-	                else {
+	                	try {
+	                		Thread.sleep(100);
+	                	} catch ( InterruptedException e ) { continue; }
+	                } else {
 	                    if (debugBuilder == null)
 	                        debugBuilder = new StringBuilder();
 	                    debugBuilder.append((char) c);
 	                    if (c == '\n') {
+	                    	LOG.info(">>OUT: " + debugBuilder.toString());
 	                    	if ( headerBuilder != null && headerBuilder.toString().startsWith("SLF4J:")) {
 	                            fireError(new IllegalStateException(headerBuilder.toString()));
 	                    		// Skip and reset
@@ -193,12 +200,9 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 	                        newLine = false;
 	                    }
 	                }
-	            } catch (InterruptedIOException e) {
-	                // The read operation has been interrupted
-	            } catch (ClosedChannelException e) {
-	                // The channel whose stream has been listened was closed
-	            } catch (IOException e) {
-	            	throw new RuntimeException(e);
+	            } catch (IOException e ) {
+	                LOG.severe("Out stream handler error: " + e.toString());
+                    keepRunning = false;
 	            }
 				
 			}
@@ -250,6 +254,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 	private int socketOut;
 	private String pipeIn;
 	private String pipeOut;
+	private String debugClient;
 	
 	public LanguageServerWSEndPoint() {
 		super();
@@ -269,7 +274,8 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 		}
 		
 		launcherScript = BASE_DIR + System.getenv(ENV_LAUNCHER);
-		LOG.info("Environment launcher: " + launcherScript);
+		debugClient = System.getenv(DEBUG_CLIENT);
+		LOG.info("Environment launcher: " + launcherScript + " debug client " + debugClient);
 		
 	}
 	
@@ -310,8 +316,8 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 		pb.directory(new File(jdtDirectory));
 		pb.redirectErrorStream(true);
 		
-		 File log = new File(BASE_DIR + "language_server_bin_exec_jdt/lsp.log");
-		 pb.redirectOutput(Redirect.appendTo(log));
+		 //File log = new File(BASE_DIR + "language_server_bin_exec_jdt/lsp.log");
+		 //pb.redirectOutput(Redirect.appendTo(log));
 		
 		Thread openCommunication = null;
 		
@@ -319,8 +325,10 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 		env.put("JAVA_HOME", System.getProperty("java.home"));
 		LOG.info("JAVA_HOME " + System.getProperty("java.home"));
 		
-		env.put("STDIN_PORT", "8991");
-		env.put("STDOUT_PORT", "8990");
+		if ( debugClient != null )  env.put("DEBUGCLIENT", debugClient);
+		
+//		env.put("STDIN_PORT", "8991");
+//		env.put("STDOUT_PORT", "8990");
 		
 		switch (this.ipc) {
 			case SOCKET:
@@ -385,6 +393,8 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 	        	openCommunication.join();
 	        	// TODO LOG output and err
 	        	//(new LogStreamHandler(process.getInputStream())).start();
+	        	LOG.info("SocketIn " + this.serverSocketIn.toString() + " stat " + this.serverSocketIn.isBound() );
+	        	LOG.info("SocketOut " + this.serverSocketOut.toString() + " stat " + this.serverSocketOut.isBound());
 	        	
 	        } else {
 	        	// Stdin / Stdout
@@ -398,22 +408,16 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 			outputHandler = new OutputStreamHandler(remoteEndpointBasic, new BufferedReader(out) );
 			outputHandler.start();
 			
-		} catch (MalformedURLException e1) {
+		} catch ( InterruptedException | IOException e1) {
 			//e1.printStackTrace();
-			LOG.severe(e1.toString());
-		} catch (IOException e2) {
-			//e.printStackTrace();
-			LOG.severe(e2.toString());
-		} catch (InterruptedException e3) {
-			//e.printStackTrace();
-			LOG.severe(e3.toString());
+			LOG.severe("IO Exception while starting: " + e1.toString());
 		}
 		
 	}
 
 	@OnMessage
 	public void onMessage(String message) {
-		LOG.info("InMessage " + message);
+		LOG.info("InMessage \n" + message);
 		if(!process.isAlive()) { LOG.warning("JDT is down"); return; }
 		inWriter.write(message);
 		inWriter.flush();
@@ -425,6 +429,11 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 		cleanup();
 
 	}	
+	
+	@OnError
+	public void onError(Session session, Throwable thr) {
+		LOG.severe("On Error: " + thr.getMessage() + "\n" + thr.toString());
+	}
 	
 	@Override
 	public void contextDestroyed(ServletContextEvent sce) {

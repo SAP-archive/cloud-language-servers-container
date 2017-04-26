@@ -1,6 +1,6 @@
 ---
 applications:
-- name: LSP-JDT
+- name: LSP-JDT-I016373
   memory: 1024M
   instances: 1
   path: target/LSPServerCF-0.0.1-SNAPSHOT.war
@@ -9,9 +9,12 @@ applications:
   buildpack: https://github.com/PavelSosin/java-buildpack.git
   stack: cflinuxfs2
   env: 
+#    JAVA-OPTS: -agentlib:jdwp=transport=dt_socket,address=195.93.234.9:8000
+#    JBP_CONFIG_DEBUG: '{enabled: true}'
     exec: language_server_bin_exec_jdt/launcher.sh
-    debug: language_server_bin_exec_jdt/debugger.sh
+#    debugclient: "195.93.234.8:8000"
     IPC: > 
-      {"socket": { "in": 8991, "out": 8990}}
+      {}
+#      {"socket": { "in": 8991, "out": 8990}}
    
  
