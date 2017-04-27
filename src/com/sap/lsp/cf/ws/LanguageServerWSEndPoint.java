@@ -221,7 +221,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 		public void run() {
 			//StringBuffer message = new StringBuffer();
 			Thread thisThread = Thread.currentThread();
-			LOG.info("LSP4J: Listening...");
+			LOG.info("LSP4J: Listening for log...");
 			StringBuilder logBuilder = null;
 			boolean keepRunning = true;
 	        while(keepRunning && !thisThread.isInterrupted() ) {
@@ -229,7 +229,9 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 	                int c = log.read();
 	                if (c == -1)
 	                    // End of input stream has been reached
-	                    keepRunning = false;
+	                	try {
+	                		Thread.sleep(100);
+	                	} catch ( InterruptedException e ) { continue; }
 	                else {
 	                	 if ( logBuilder == null ) logBuilder = new StringBuilder();
 	                	 logBuilder.append(c);
@@ -239,7 +241,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 	                	 }
 	                }
 	            } catch (IOException ioex) {
-	            	LOG.warning(ioex.toString());
+	            	LOG.warning("Log stream error: " + ioex.toString());
 	            	return;
 	            }
 	        }
@@ -337,6 +339,8 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 		        try {
 		        	serverSocketIn = new ServerSocket(this.socketIn);
 		        	serverSocketOut = new ServerSocket(this.socketOut);
+		    		env.put("STDOUT_PORT", Integer.toString(this.socketIn));
+		    		env.put("STDIN_PORT", Integer.toString(this.socketOut));
 		        } catch (IOException ex ) {
 		        	LOG.warning("Error in Sokcet communication " + ex.toString());
 		        }
@@ -363,20 +367,32 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 		        LOG.info("Using named pipes communication");
 		        String processIn = this.pipeIn;
 		        String processOut = this.pipeOut;
+	    		env.put("STDOUT_PIPE_NAME", this.pipeIn);
+	    		env.put("STDIN_PIPE_NAME", this.pipeOut);
 		        
 		        openCommunication = new Thread(new Runnable() {
 
 					@Override
 					public void run() {
 				        try {
-				        	out = new FileReader(processIn);
 				        	inWriter = new PrintWriter((new BufferedWriter(new FileWriter(processOut))));
+				        	out = new FileReader(processIn);
 				        } catch (IOException pipeEx) {
 				        	LOG.warning("Error in pipes communication " + pipeEx.toString());
 				        }
 					}
 		        	
 		        });
+		        
+		        // Create pipes
+		        try {
+			        Process mkfifoProc =new ProcessBuilder("mkfifo", processIn).inheritIO().start();
+			        mkfifoProc.waitFor();
+			        mkfifoProc = new ProcessBuilder("mkfifo", processOut).inheritIO().start();
+			        mkfifoProc.waitFor();
+		        } catch ( IOException | InterruptedException mkfifoEx) {
+		        	LOG.severe("Pipe error: " + mkfifoEx.getMessage());
+		        }
 		        openCommunication.start();
 		        break;
 
@@ -388,26 +404,42 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 
 			process = pb.start();
 			LOG.info("Starting....");
-	        if ( openCommunication != null ) {
-	        	// Either Named pipes or Socket
-	        	openCommunication.join();
-	        	// TODO LOG output and err
-	        	//(new LogStreamHandler(process.getInputStream())).start();
-	        	LOG.info("SocketIn " + this.serverSocketIn.toString() + " stat " + this.serverSocketIn.isBound() );
-	        	LOG.info("SocketOut " + this.serverSocketOut.toString() + " stat " + this.serverSocketOut.isBound());
-	        	
-	        } else {
-	        	// Stdin / Stdout
-				out = new InputStreamReader(process.getInputStream());
-				OutputStream in = process.getOutputStream();
-				inWriter = new PrintWriter(new BufferedWriter(new OutputStreamWriter(in)));
-	        }
-			InputStream er = process.getErrorStream();
+			if ( process.isAlive() ) {
+		        if ( openCommunication != null ) {
+		        	// Either Named pipes or Socket
+		        	openCommunication.join();
+		        	// TODO LOG output and err
+		        	(new LogStreamHandler(process.getInputStream())).start();
+		        	switch ( this.ipc) {
+		        	case SOCKET:
+			        	LOG.info("SocketIn " + this.serverSocketIn.toString() + " stat " + this.serverSocketIn.isBound() );
+			        	LOG.info("SocketOut " + this.serverSocketOut.toString() + " stat " + this.serverSocketOut.isBound());
+			        	break;
+		        	case NAMEDPIPES:
+		        		LOG.info("PipeIn exists " + new File(this.pipeIn).exists());
+		        		LOG.info("PipeOut exists " + new File(this.pipeIn).exists());
+		        		break;
+		        	default:
+		        		break;
+		        	}
+		        	
+		        } else {
+		        	// Stdin / Stdout
+					out = new InputStreamReader(process.getInputStream());
+					OutputStream in = process.getOutputStream();
+					inWriter = new PrintWriter(new BufferedWriter(new OutputStreamWriter(in)));
+		        }
+				InputStream er = process.getErrorStream();
+				LOG.info("LSP4J: JDT started");
+
+				outputHandler = new OutputStreamHandler(remoteEndpointBasic, new BufferedReader(out) );
+				outputHandler.start();
+				
+			} else {
+				LOG.severe("LSP4J: JDT start failure");
+			}
 	        
-			LOG.info("LSP4J: JDT started");
-			outputHandler = new OutputStreamHandler(remoteEndpointBasic, new BufferedReader(out) );
-			outputHandler.start();
-			
+
 		} catch ( InterruptedException | IOException e1) {
 			//e1.printStackTrace();
 			LOG.severe("IO Exception while starting: " + e1.toString());
