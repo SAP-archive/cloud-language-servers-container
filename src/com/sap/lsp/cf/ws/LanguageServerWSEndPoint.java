@@ -296,6 +296,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 	@OnOpen
 	public void onOpen(Session session, EndpointConfig endpointConfig) {
 		LOG.info("LSP4J: OnOpen is invoked");
+		LOG.info("LSP4J: Session Uri authority: " + session.getRequestURI().getAuthority());
 		if ( !launcherScript.endsWith(".sh") ) {
 			LOG.warning("No launcher script configured");
 			return;

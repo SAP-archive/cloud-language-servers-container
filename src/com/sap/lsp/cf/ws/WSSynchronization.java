@@ -75,7 +75,7 @@ public class WSSynchronization extends HttpServlet {
 			} catch (IOException | UnsupportedOperationException x ) {
 			    LOG.severe(x.toString());
 			}
-			response.getWriter().append("Uploaded at  " + projectRoot);
+			response.getWriter().append("file:///" + projectRoot);
 		}
 
 		

@@ -9,8 +9,8 @@ applications:
   buildpack: https://github.com/PavelSosin/java-buildpack.git
   stack: cflinuxfs2
   env: 
-#    JAVA-OPTS: -agentlib:jdwp=transport=dt_socket,address=195.93.234.8:8000
-#    JBP_CONFIG_DEBUG: '{enabled: true}'
+    JAVA-OPTS: -agentlib:jdwp=transport=dt_socket,address=195.93.234.8:8000
+    JBP_CONFIG_DEBUG: '{enabled: true}'
     exec: language_server_bin_exec_jdt/launcher.sh
 #    debugclient: "195.93.234.8:8000"
     IPC: > 
