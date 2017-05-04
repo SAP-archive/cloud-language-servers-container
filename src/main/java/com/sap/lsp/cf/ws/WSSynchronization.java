@@ -33,6 +33,7 @@ public class WSSynchronization extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final String SAVE_DIR = System.getenv("HOME") + "/di_ws_root/"; //"/.java-buildpack/language_server_bin_exec_jdt/di_ws_root/";
 	private static final Logger LOG = Logger.getLogger(WSSynchronization.class.getName());
+	private static final String RESP_FORMAT = "{ \"mapUrl\" : \"%s\" }";
        
     /**
      * @see HttpServlet#HttpServlet()
@@ -75,7 +76,9 @@ public class WSSynchronization extends HttpServlet {
 			} catch (IOException | UnsupportedOperationException x ) {
 			    LOG.severe(x.toString());
 			}
-			response.getWriter().append("file:///" + projectRoot);
+			String projMapUrl = "file://" + projectRoot;
+			response.setContentType("application/json");
+			response.getWriter().append(String.format(RESP_FORMAT, projMapUrl));
 		}
 
 		
