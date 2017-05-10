@@ -63,8 +63,8 @@ public class WSSynchronization extends HttpServlet {
 			fileName = new File(fileName).getName();
 			//part.write(savePath + File.separator + fileName);
 			String projPath = SAVE_DIR + fileName.substring(0, fileName.indexOf(".zip"));
-			//String projectRoot = unzipProject(part.getInputStream(), new File(projPath));
-			String projectRoot = unzipProject(part.getInputStream(), new File(SAVE_DIR));
+			String projectRoot = unzipProject(part.getInputStream(), new File(projPath));
+			//String projectRoot = unzipProject(part.getInputStream(), new File(SAVE_DIR));
 			
 			// Create symbolic link
 			Path projectPath = Paths.get(projectRoot);
