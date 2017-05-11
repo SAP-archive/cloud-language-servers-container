@@ -50,10 +50,11 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 	public static final String ENV_IPC = "IPC";
 	public static final String ENV_IPC_SOCKET = "socket";
 	public static final String ENV_IPC_PIPES = "pipes";
-	public static final String IPC_IN = "in";
-	public static final String IPC_OUT = "out";
+	public static final String ENV_IPC_IN = "in";
+	public static final String ENV_IPC_OUT = "out";
 	
-	public static final String BASE_DIR = "/home/vcap/app/.java-buildpack/";
+	public static final String ENV_BASE_DIR = "basedir";   //For CF "/home/vcap/app/.java-buildpack/";
+	private static final String ENV_LSP_WORKDIR = "workdir"; //For CF "language_server_bin_exec_jdt/";
 	public static final String ENV_LAUNCHER = "exec";
 	public static final String DEBUG_CLIENT = "debugclient";
 	
@@ -275,21 +276,21 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 			LOG.info("Default Std Stream IPC");
 		}
 		
-		launcherScript = BASE_DIR + System.getenv(ENV_LAUNCHER);
+		launcherScript = System.getenv(ENV_BASE_DIR) + System.getenv(ENV_LAUNCHER);
 		debugClient = System.getenv(DEBUG_CLIENT);
 		LOG.info("Environment launcher: " + launcherScript + " debug client " + debugClient);
 		
 	}
 	
 	private void pipeEnv(JsonObject jsonObject) {
-		this.pipeIn = jsonObject.getJsonString(IPC_IN).getString();
-		this.pipeOut = jsonObject.getJsonString(IPC_OUT).getString();
+		this.pipeIn = jsonObject.getJsonString(ENV_IPC_IN).getString();
+		this.pipeOut = jsonObject.getJsonString(ENV_IPC_OUT).getString();
 		LOG.info(String.format("Named pipe IPC: in %s out %s",this.pipeIn, this.pipeOut));
 	}
 
 	private void socketEnv(JsonObject jsonObject) {
-		this.socketIn = jsonObject.getJsonNumber(IPC_IN).intValue();
-		this.socketOut = jsonObject.getJsonNumber(IPC_OUT).intValue();
+		this.socketIn = jsonObject.getJsonNumber(ENV_IPC_IN).intValue();
+		this.socketOut = jsonObject.getJsonNumber(ENV_IPC_OUT).intValue();
 		LOG.info(String.format("Socket IPC: in %d out %d",this.socketIn, this.socketOut));
 	}
 
@@ -313,7 +314,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
         
 
  
-        String jdtDirectory = System.getenv("HOME") + "/.java-buildpack/language_server_bin_exec_jdt";
+        String jdtDirectory = System.getenv(ENV_BASE_DIR) + System.getenv(ENV_LSP_WORKDIR); 
         LOG.info("Working dir is " + jdtDirectory);
 		ProcessBuilder pb = new ProcessBuilder("/bin/bash",launcherScript);
 		pb.directory(new File(jdtDirectory));

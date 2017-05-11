@@ -31,7 +31,7 @@ maxFileSize=1024*1024*10,		// 10MB
 maxRequestSize=1024*1024*50)	// 50MB
 public class WSSynchronization extends HttpServlet {
 	private static final long serialVersionUID = 1L;
-	private static final String SAVE_DIR = System.getenv("HOME") + "/di_ws_root/"; //"/.java-buildpack/language_server_bin_exec_jdt/di_ws_root/";
+	private static final String SAVE_DIR = System.getenv("HOME") + "/di_ws_root/"; 
 	private static final Logger LOG = Logger.getLogger(WSSynchronization.class.getName());
 	private static final String RESP_FORMAT = "{ \"mapUrl\" : \"%s\" }";
        
