@@ -33,7 +33,7 @@ public class WSSynchronization extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final String SAVE_DIR = System.getenv("HOME") + "/di_ws_root/"; 
 	private static final Logger LOG = Logger.getLogger(WSSynchronization.class.getName());
-	private static final String RESP_FORMAT = "{ \"mapUrl\" : \"%s\" }";
+	private static final String RESP_FORMAT = "{ \"mapUrl\": \"%s\", \"module\": \"%s\" }";
        
     /**
      * @see HttpServlet#HttpServlet()
@@ -65,11 +65,11 @@ public class WSSynchronization extends HttpServlet {
 			// refines the fileName in case it is an absolute path
 			fileName = new File(fileName).getName();
 			
-			String projectRoot = syncProject(part.getInputStream(), new File(projPath));
+			String moduleRoot = "file://" + syncProject(part.getInputStream(), new File(projPath));
 			
 			// Create symbolic link
-			Path projectPath = Paths.get(projectRoot);
-			Path linkPath = Paths.get(System.getProperty("user.home") + "/" + projectRoot.substring(projectRoot.lastIndexOf('/', projectRoot.length() )+1 ));
+			Path projectPath = Paths.get(moduleRoot);
+			Path linkPath = Paths.get(System.getProperty("user.home") + "/" + moduleRoot.substring(moduleRoot.lastIndexOf('/', moduleRoot.length() )+1 ));
 			try {
 				//LOG.info("CREATING LINK " + linkPath.toString() + " for " + projectRoot.substring(projectRoot.lastIndexOf('/',projectRoot.length())+1) + " Home " + System.getProperty("user.home") );
 			    Files.createSymbolicLink(linkPath, projectPath);
@@ -77,9 +77,9 @@ public class WSSynchronization extends HttpServlet {
 			} catch (IOException | UnsupportedOperationException x ) {
 			    LOG.severe(x.toString());
 			}
-			String projMapUrl = "file://" + projectRoot;
+			String projMapUrl = "file://" + projPath;
 			response.setContentType("application/json");
-			response.getWriter().append(String.format(RESP_FORMAT, projMapUrl));
+			response.getWriter().append(String.format(RESP_FORMAT, projMapUrl, moduleRoot));
 		}
 
 		
@@ -98,7 +98,7 @@ public class WSSynchronization extends HttpServlet {
 			String destPath =  unpack(zipinputstream, destination, true);
 
 			response.setContentType("application/json");
-			response.getWriter().append(String.format(RESP_FORMAT, destPath));
+			response.getWriter().append(String.format(RESP_FORMAT, "", destPath));
 		}
 
 	}
