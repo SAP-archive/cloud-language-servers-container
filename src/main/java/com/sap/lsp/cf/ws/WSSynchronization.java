@@ -65,7 +65,8 @@ public class WSSynchronization extends HttpServlet {
 			// refines the fileName in case it is an absolute path
 			fileName = new File(fileName).getName();
 			
-			String moduleRoot = "file://" + syncProject(part.getInputStream(), new File(projPath));
+			File projRootDir = new File(new File(SAVE_DIR), projRelPath);
+			String moduleRoot = "file://" + syncProject(part.getInputStream(), projRootDir);
 			
 			// Create symbolic link
 			Path projectPath = Paths.get(moduleRoot);
@@ -95,10 +96,16 @@ public class WSSynchronization extends HttpServlet {
 		File destination = new File(artifactPath);
 		for (Part part : request.getParts()) {
 			ZipInputStream zipinputstream = new ZipInputStream(part.getInputStream());
-			String destPath =  unpack(zipinputstream, destination, true);
+			String moduleRoot = "";
+			if ( destination.exists() && destination.isDirectory()) {
+				moduleRoot = "file://" + syncProject(part.getInputStream(), destination);
+			} else if (destination.exists()) {
+				moduleRoot =  "file://" + unpack(zipinputstream, destination, true);
+			}
+
 
 			response.setContentType("application/json");
-			response.getWriter().append(String.format(RESP_FORMAT, "", destPath));
+			response.getWriter().append(String.format(RESP_FORMAT, "", moduleRoot));
 		}
 
 	}
@@ -129,6 +136,11 @@ public class WSSynchronization extends HttpServlet {
 				LOG.warning( e.toString());
 			}			
 		}
+		if ( !destination.exists() ) { if (!destination.mkdirs()) {
+			LOG.severe("Can't create project path " + destination.getAbsolutePath());
+			}
+		}
+		
 		LOG.info("Unzip project to " + destination.getAbsolutePath());
 		ZipInputStream zipinputstream = new ZipInputStream(projectPart);
 		return unpack(zipinputstream, destination, false);
