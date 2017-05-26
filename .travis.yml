@@ -1,0 +1,19 @@
+language: java
+jdk:
+  - oraclejdk8
+
+sudo: required
+services:
+  - docker
+  
+before_install:
+  - curl -o 'settings.xml' 'http://nexus.wdf.sap.corp:8081/nexus/service/local/templates/settings/LeanDI/content' 
+
+script:
+  - mvn clean install -s settings.xml
+  
+after_success:
+  - sudo docker build -t tomcat:8.5-jre8-ruby .
+  - sudo docker run --name test_docker tomcat:8.5-jre8-ruby
+  
+
