@@ -37,6 +37,7 @@ import javax.websocket.OnOpen;
 import javax.websocket.RemoteEndpoint;
 import javax.websocket.RemoteEndpoint.Basic;
 import javax.websocket.Session;
+import javax.websocket.WebSocketContainer;
 import javax.websocket.server.ServerEndpoint;
 
 import javax.json.Json;
@@ -302,6 +303,9 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 			LOG.warning("No launcher script configured");
 			return;
 		}
+		
+		// set timeout
+		session.setMaxIdleTimeout(0L);
 		
 		this.config = endpointConfig;
         RemoteEndpoint.Basic remoteEndpointBasic = session.getBasicRemote();
