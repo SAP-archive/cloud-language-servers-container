@@ -21,6 +21,7 @@ import java.net.Socket;
 import java.net.URL;
 import java.nio.channels.ClosedChannelException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -38,6 +39,7 @@ import javax.websocket.RemoteEndpoint;
 import javax.websocket.RemoteEndpoint.Basic;
 import javax.websocket.Session;
 import javax.websocket.WebSocketContainer;
+import javax.websocket.server.PathParam;
 import javax.websocket.server.ServerEndpoint;
 
 import javax.json.Json;
@@ -297,6 +299,10 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 
 	@OnOpen
 	public void onOpen(Session session, EndpointConfig endpointConfig) {
+		Map<String,List<String>> reqParam = session.getRequestParameterMap();
+		if ( reqParam != null && reqParam.containsKey("local") ) {
+			return;
+		}
 		LOG.info("LSP4J: OnOpen is invoked");
 		LOG.info("LSP4J: Session Uri authority: " + session.getRequestURI().getAuthority());
 		if ( !launcherScript.endsWith(".sh") ) {
@@ -455,8 +461,9 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 
 	@OnMessage
 	public void onMessage(String message) {
+		if ( message.length() == 0 ) return; // This is just ping!
 		LOG.info("InMessage \n" + message);
-		if(!process.isAlive()) { LOG.warning("JDT is down"); return; }
+		if(process == null || !process.isAlive() || inWriter == null) { LOG.warning("JDT is down"); return; }
 		inWriter.write(message);
 		inWriter.flush();
 	}

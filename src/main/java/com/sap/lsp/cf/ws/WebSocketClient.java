@@ -12,7 +12,7 @@ public class WebSocketClient {
     private CompletableFuture<String> response;
     private String waitFor;
 
-    public WebSocketClient(String uri) {
+    public void connect(String uri) {
         try {
             WebSocketContainer container = ContainerProvider
                 .getWebSocketContainer();
@@ -20,6 +20,7 @@ public class WebSocketClient {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    	
     }
     
     public boolean isClosed() {
