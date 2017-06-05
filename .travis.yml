@@ -11,9 +11,3 @@ before_install:
 
 script:
   - mvn clean install -s settings.xml
-  
-after_success:
-  - sudo docker build -t tomcat:8.5-jre8-ruby .
-  - sudo docker run --name test_docker tomcat:8.5-jre8-ruby
-  
-
