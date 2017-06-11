@@ -354,7 +354,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 		    		env.put("STDOUT_PORT", Integer.toString(this.socketIn));
 		    		env.put("STDIN_PORT", Integer.toString(this.socketOut));
 		        } catch (IOException ex ) {
-		        	LOG.warning("Error in Sokcet communication " + ex.toString());
+		        	LOG.warning("Error in Socket communication " + ex.toString());
 		        }
 		        openCommunication  = new Thread( new Runnable () {
 
