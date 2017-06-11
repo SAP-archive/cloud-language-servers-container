@@ -238,7 +238,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 	                	} catch ( InterruptedException e ) { continue; }
 	                else {
 	                	 if ( logBuilder == null ) logBuilder = new StringBuilder();
-	                	 logBuilder.append(c);
+	                	 logBuilder.append((char)c);
 	                	 if ( c == '\n' ) {
 	                		 LOG.info(logBuilder.toString());
 	                		 logBuilder = null;
@@ -419,7 +419,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 			if ( process.isAlive() ) {
 		        if ( openCommunication != null ) {
 		        	// Either Named pipes or Socket
-		        	openCommunication.join();
+		        	openCommunication.join(500L);
 		        	// TODO LOG output and err
 		        	(new LogStreamHandler(process.getInputStream())).start();
 		        	switch ( this.ipc) {
