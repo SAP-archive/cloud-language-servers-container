@@ -24,6 +24,7 @@
 	</distributionManagement>
 	
 	<build>
+		<finalName>LSPServerCF</finalName>
 		<sourceDirectory>src/main/java</sourceDirectory>
 		<plugins>
 			<plugin>
