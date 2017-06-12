@@ -10,9 +10,14 @@ import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.logging.Logger;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import javax.json.Json;
-import javax.json.JsonArray;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
@@ -26,13 +31,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.Part;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.logging.Logger;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
-
 /**
  * Servlet implementation class WSSynchronization
  */
@@ -42,9 +40,8 @@ maxFileSize=1024*1024*10,		// 10MB
 maxRequestSize=1024*1024*50)	// 50MB
 public class WSSynchronization extends HttpServlet {
 	private static final long serialVersionUID = 1L;
-	private static final String SAVE_DIR = System.getenv("HOME") + "/di_ws_root/"; 
+	private static final String SAVE_DIR = System.getenv("HOME") + "/di_ws_root"; 
 	private static final Logger LOG = Logger.getLogger(WSSynchronization.class.getName());
-	private static final String RESP_FORMAT = "{ \"mapUrl\": \"%s\", \"module\": \"%s\" }";
 	private static final String FS_STORAGE = "fs-storage";
 	private static final String FS_TAGS = "tags";
 	private static final String FS_LSP_WS = "LSP-WS";
@@ -107,9 +104,8 @@ public class WSSynchronization extends HttpServlet {
 	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse response)
 	 */
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		// TODO Auto-generated method stub
 		response.getWriter().append("Served at: ").append(request.getContextPath()).
-		append(" for curl -i -X PUT -H \"Content-Type: multipart/form-data\" -F \"file=@<YourZipFile>\"  https://<application>/WSSynchronization");
+		append(" for curl -i -X PUT -H \"Content-Type: multipart/form-data\" -F \"file=@<YourZipFile>\"  https://<application>/WSSynchronization/projectxxx");
 	}
 
 	/**
@@ -118,55 +114,42 @@ public class WSSynchronization extends HttpServlet {
 	protected void doPut(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
 		String artifactRelPath = "";
-		String projPath = null;
-		String moduleRoot = null;
+		String zipPath = "";
+		boolean bInitSync = false;
 		File destination = null;
 		List<String> extracted = null;
-		artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1 );
-		String saveDir =  wsSaveDir != null ? wsSaveDir + "/" : SAVE_DIR;
-		if ( artifactRelPath.indexOf('/') < 0) {
-			projPath = saveDir + artifactRelPath;
-		} else if ( artifactRelPath.indexOf('/') > 0 ) {
+		String workspaceRoot = "";
+		
+		String servletPath = request.getServletPath();
+		String requestURI = request.getRequestURI();
+		String saveDir = wsSaveDir != null ? wsSaveDir + "/" : SAVE_DIR;
+		if (servletPath.equals(requestURI))  {
+			bInitSync = true;
+			workspaceRoot = "file://" + saveDir;
+		} else if (requestURI.length() > servletPath.length() )  {
+			artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1 );
+			zipPath = artifactRelPath.substring(artifactRelPath.indexOf('/') + 1);
 			destination = new File(saveDir + artifactRelPath);
 			if ( destination.exists()) {
 				response.setStatus(HttpServletResponse.SC_FORBIDDEN);
 				return;
-			}
+			}			
 		}
+		
 		for (Part part : request.getParts()) {
-			String fileName = extractFileName(part);
-			// refines the fileName in case it is an absolute path
-			fileName = new File(fileName).getName();
-			
-			if ( projPath != null ) {
-				File projRootDir = new File(new File(saveDir), artifactRelPath);
-				moduleRoot = "file://" + syncProject(part.getInputStream(), projRootDir);
+			if (bInitSync) {
+				syncWorkspace(part.getInputStream(), new File(saveDir));
 			} else {
-				String zipPath = artifactRelPath.substring(artifactRelPath.indexOf('/') + 1);
 				extracted = extract(new ZipInputStream(part.getInputStream()), destination, zipPath);
 			}
-			// Create symbolic link
-/*			Path projectPath = Paths.get(moduleRoot);
-			Path linkPath = Paths.get(System.getProperty("user.home") + "/" + moduleRoot.substring(moduleRoot.lastIndexOf('/', moduleRoot.length() )+1 ));
-			try {
-				//LOG.info("CREATING LINK " + linkPath.toString() + " for " + projectRoot.substring(projectRoot.lastIndexOf('/',projectRoot.length())+1) + " Home " + System.getProperty("user.home") );
-			    Files.createSymbolicLink(linkPath, projectPath);
-			    LOG.info("PROJECT LINK " + linkPath.toString() + " for " + projectPath.toString() + " created.");
-			} catch (IOException | UnsupportedOperationException x ) {
-			    LOG.severe(x.toString());
-			}*/
-			response.setStatus(HttpServletResponse.SC_CREATED);
-			response.setContentType("application/json");
-			if ( projPath != null ) {
-				String projMapUrl = "file://" + projPath;
-			
-				response.getWriter().append(String.format(RESP_FORMAT, projMapUrl, moduleRoot));
-			} else {
-				response.getWriter().append("{}");
-			}
+		}
+		
+		response.setStatus(HttpServletResponse.SC_CREATED);
+		if (bInitSync) {
+			response.getWriter().append(workspaceRoot);
 		}
 
-		if ( extracted != null ) {
+		if (extracted != null) {
 			if ( wsLSP.isClosed() ) {
 				wsLSP.connect("ws://localhost:8080/LanguageServer?local");
 			}
@@ -233,18 +216,7 @@ public class WSSynchronization extends HttpServlet {
 	
 /* ---------------------- Private methods ------------------------------------	*/
 	
-	private String extractFileName(Part part) {
-		String contentDisp = part.getHeader("content-disposition");
-		String[] items = contentDisp.split(";");
-		for (String s : items) {
-			if (s.trim().startsWith("filename")) {
-				return s.substring(s.indexOf("=") + 2, s.length()-1);
-			}
-		}
-		return "";
-	}
-	
-	public String syncProject(InputStream projectPart, File destination) {
+	private String syncWorkspace(InputStream workspaceZipStream, File destination) {
 		if ( destination.exists()) {
 			Path rootPath = Paths.get(destination.getPath());
 			try {
@@ -258,12 +230,12 @@ public class WSSynchronization extends HttpServlet {
 			}			
 		}
 		if ( !destination.exists() ) { if (!destination.mkdirs()) {
-			LOG.severe("Can't create project path " + destination.getAbsolutePath());
+			LOG.severe("Can't create workspace path " + destination.getAbsolutePath());
 			}
 		}
 		
-		LOG.info("Unzip project to " + destination.getAbsolutePath());
-		ZipInputStream zipinputstream = new ZipInputStream(projectPart);
+		LOG.info("Unzip workspace to " + destination.getAbsolutePath());
+		ZipInputStream zipinputstream = new ZipInputStream(workspaceZipStream);
 		return unpack(zipinputstream, destination, false);
 	}
 
@@ -347,21 +319,6 @@ public class WSSynchronization extends HttpServlet {
 		            File newFile = destination;
 		            LOG.info("UNZIP Updating " + newFile.getAbsolutePath());
 		            
-/*		            if (zipentry.isDirectory()) {
-		            	if ( newFile.exists()) {
-			                zipentry = zipinputstream.getNextEntry();
-			                continue;
-		            	}
-		            	
-		                if( !newFile.mkdirs() ) {
-		                	LOG.warning("Directory creation error");
-		                	throw new IOException("Directory creation error");
-		                } else {
-			                zipentry = zipinputstream.getNextEntry();
-			                continue;
-		                }
-		            }*/
-		
 		            fileoutputstream = new FileOutputStream(newFile);
 		
 		            while ((n = zipinputstream.read(buf, 0, 1024)) > -1) {
