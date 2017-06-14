@@ -15,6 +15,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.Reader;
 import java.lang.ProcessBuilder.Redirect;
+import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -72,12 +73,12 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
     private Reader out = null;
 	private Process process;
 
-
-	private enum IPC { SOCKET, NAMEDPIPES, STREAM };
+	private enum IPC { SOCKET, NAMEDPIPES, STREAM, CLIENTSOCKET };
 	private final IPC ipc;
 	ServerSocket serverSocketIn = null;
 	ServerSocket serverSocketOut = null;
-
+	Socket clientSocket = null;
+	
 	private static class OutputStreamHandler extends Thread {
 
 	    public static final String JSONRPC_VERSION = "2.0";
@@ -258,6 +259,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 	OutputStreamHandler outputHandler = null;
 	private int socketIn;
 	private int socketOut;
+	private int clientSocketPort;
 	private String pipeIn;
 	private String pipeOut;
 	private String debugClient;
@@ -426,7 +428,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 			if ( process.isAlive() ) {
 		        if ( openCommunication != null ) {
 		        	// Either Named pipes or Socket
-		        	openCommunication.join(500L);
+		        	openCommunication.join(30000L);
 		        	// TODO LOG output and err
 		        	(new LogStreamHandler(process.getInputStream())).start();
 		        	switch ( this.ipc) {
@@ -441,7 +443,10 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 		        	default:
 		        		break;
 		        	}
-
+		        } else if (this.ipc == IPC.CLIENTSOCKET ) {
+		        	this.clientSocket = new Socket(InetAddress.getLoopbackAddress(),clientSocketPort);
+			        inWriter = new PrintWriter(new BufferedWriter( new OutputStreamWriter( this.clientSocket.getOutputStream() )));
+			        out = new InputStreamReader( this.clientSocket.getInputStream());		        	
 		        } else {
 		        	// Stdin / Stdout
 					out = new InputStreamReader(process.getInputStream());
