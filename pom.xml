@@ -84,11 +84,7 @@
 	</dependencyManagement>
 	<profiles>
 		 <profile>
-			 <id>integration-test</id>
-			 <activation>
-				 <property><name>!release.build</name></property>
-			 </activation>
-
+		  <id>integration-test</id>
 		 <build>
 			<plugins>
 				<plugin>

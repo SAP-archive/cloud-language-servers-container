@@ -8,4 +8,4 @@ before_install:
   - curl -o 'settings.xml' 'http://nexus.wdf.sap.corp:8081/nexus/service/local/templates/settings/LeanDI/content'
 
 script:
-  - mvn clean install -s settings.xml
+  - mvn clean install -Pintegration-test -s settings.xml
