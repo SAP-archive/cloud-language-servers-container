@@ -15,7 +15,7 @@ describe('Protocol test', function() {
 		if ( msg.startsWith("Content-Length:") ) {
 			var body = msg.substr(msg.indexOf("{"));
 			var mObj = JSON.parse(body);
-			
+
 			// Find subscriber
 			var indexFound = -1;
 			aSubscribers.forEach(function(oSubscr,index) {
@@ -27,7 +27,7 @@ describe('Protocol test', function() {
 			if ( indexFound != -1 ) {
 				delete aSubscribers[indexFound];
 			}
-			
+
 		}
 	}
 
@@ -40,7 +40,7 @@ describe('Protocol test', function() {
 					openRes(true);
 				}})
 			});
-			var ws_o = new WebSocket('ws://localhost:8090/LSPServerCF-0.0.1-SNAPSHOT/LanguageServer');
+			var ws_o = new WebSocket('ws://localhost:8080/LanguageServer');
 			ws_o.on('open',function open(){
 				ws = ws_o;
 				ws.on('message',onMessage);
@@ -60,18 +60,18 @@ describe('Protocol test', function() {
 			}
 			resolve();
 		}), 1000
-			
+
 		);
 	});
-	
+
 	it('Check for open', function() {
 		this.timeout(1000);
 		return openPromise.then(function(isOpened){
 			expect(isOpened).to.be.true;
 		});
-	 
+
 	});
-	
+
 	it('Check for Mirror',function(){
 		this.timeout(2000);
 		var testMessage = "Content-Length: 113\r\n\r\n" +
@@ -94,12 +94,12 @@ describe('Protocol test', function() {
 					//TODO check for message consistency
 				});
 
-				
+
 			} else {
 				assert.fail('Not opened');
 			}
-			
+
 		});
-		
+
 	});
 });

@@ -1,13 +1,11 @@
 language: java
 jdk:
   - oraclejdk8
+env:
+  - IPC='{"socket":{"in":8991, "out":8990}}' basedir=$TRAVIS_BUILD_DIR/src/test/ workdir=util/ exec=util/EchoLauncher.sh
 
-sudo: required
-services:
-  - docker
-  
 before_install:
-  - curl -o 'settings.xml' 'http://nexus.wdf.sap.corp:8081/nexus/service/local/templates/settings/LeanDI/content' 
+  - curl -o 'settings.xml' 'http://nexus.wdf.sap.corp:8081/nexus/service/local/templates/settings/LeanDI/content'
 
 script:
   - mvn clean install -s settings.xml

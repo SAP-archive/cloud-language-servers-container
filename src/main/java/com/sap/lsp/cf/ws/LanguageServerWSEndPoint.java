@@ -55,29 +55,29 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 	public static final String ENV_IPC_PIPES = "pipes";
 	public static final String ENV_IPC_IN = "in";
 	public static final String ENV_IPC_OUT = "out";
-	
+
 	public static final String ENV_BASE_DIR = "basedir";   //For CF "/home/vcap/app/.java-buildpack/";
 	private static final String ENV_LSP_WORKDIR = "workdir"; //For CF "language_server_bin_exec_jdt/";
 	public static final String ENV_LAUNCHER = "exec";
 	public static final String DEBUG_CLIENT = "debugclient";
-	
+
 	private final String launcherScript;
-	
+
 	private static ServletContext servletContext;
 	private EndpointConfig config;
-	
+
 	private static final Logger LOG = Logger.getLogger(LanguageServerWSEndPoint.class.getName());
 
 	private PrintWriter inWriter = null;
     private Reader out = null;
 	private Process process;
-	
-	
+
+
 	private enum IPC { SOCKET, NAMEDPIPES, STREAM };
 	private final IPC ipc;
 	ServerSocket serverSocketIn = null;
 	ServerSocket serverSocketOut = null;
-	
+
 	private static class OutputStreamHandler extends Thread {
 
 	    public static final String JSONRPC_VERSION = "2.0";
@@ -85,24 +85,24 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 	    public static final String CONTENT_TYPE_HEADER = "Content-Type";
 	    public static final String JSON_MIME_TYPE = "application/json";
 	    public static final String CRLF = "\r\n";
-	    
+
 		private final Basic remote;
 		private final BufferedReader out;
 		//private final InputStreamReader pipeReader;
 		private boolean keepRunning;
-		
+
 		   private static class Headers {
 		        int contentLength = -1;
 		        String charset = StandardCharsets.UTF_8.name();
-		    }	
-		
+		    }
+
 		public OutputStreamHandler( RemoteEndpoint.Basic remoteEndpointBasic, BufferedReader out) {
 			this.remote = remoteEndpointBasic;
 			this.out = out;
 		}
 
 		protected void fireError(Throwable exception) {
-			LOG.warning(exception.getMessage()); 
+			LOG.warning(exception.getMessage());
 		}
 
 	    protected void parseHeader(String line, Headers headers) {
@@ -132,7 +132,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 	    	int contentLength = headers.contentLength;
 	            char[] buffer = new char[contentLength];
 	            int bytesRead = 0;
-	            
+
 	            while (bytesRead < contentLength) {
 	                int readResult = out.read(buffer, bytesRead, contentLength - bytesRead);
 	                if (readResult == -1)
@@ -142,7 +142,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 	            msgBuffer.append(CRLF).append(CRLF).append(new String(buffer));
 	            LOG.info("LSP sends " + msgBuffer.toString());
 	            remote.sendText(msgBuffer.toString());
-	            
+
 	    }
 
 		public void run () {
@@ -154,7 +154,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 	        StringBuilder debugBuilder = null;
 	        boolean newLine = false;
 	        Headers headers = new Headers();
-			
+
 			while(keepRunning && !thisThread.isInterrupted() ) {
 	            try {
 	                int c = out.read();
@@ -208,20 +208,20 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 	                LOG.severe("Out stream handler error: " + e.toString());
                     keepRunning = false;
 	            }
-				
+
 			}
 
 		}
 
 	};
-	
+
 	private static class LogStreamHandler extends Thread {
 		private final BufferedReader log;
 
 		public LogStreamHandler(InputStream log) {
 			this.log = new BufferedReader(new InputStreamReader(log));
 		}
-		
+
 		public void run() {
 			//StringBuffer message = new StringBuffer();
 			Thread thisThread = Thread.currentThread();
@@ -249,21 +249,22 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 	            	return;
 	            }
 	        }
-			
+
 		}
-		
+
 	}
-	
-	
+
+
 	OutputStreamHandler outputHandler = null;
 	private int socketIn;
 	private int socketOut;
 	private String pipeIn;
 	private String pipeOut;
 	private String debugClient;
-	
+
 	public LanguageServerWSEndPoint() {
 		super();
+
 		String cfEnvStr = System.getenv(ENV_IPC);
 		LOG.info("Environment IPC: " + cfEnvStr);
 		JsonReader envReader = Json.createReader(new ByteArrayInputStream(cfEnvStr.getBytes(StandardCharsets.UTF_8)));
@@ -278,13 +279,13 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 			this.ipc = IPC.STREAM;
 			LOG.info("Default Std Stream IPC");
 		}
-		
+
 		launcherScript = System.getenv(ENV_BASE_DIR) + System.getenv(ENV_LAUNCHER);
 		debugClient = System.getenv(DEBUG_CLIENT);
 		LOG.info("Environment launcher: " + launcherScript + " debug client " + debugClient);
-		
+
 	}
-	
+
 	private void pipeEnv(JsonObject jsonObject) {
 		this.pipeIn = jsonObject.getJsonString(ENV_IPC_IN).getString();
 		this.pipeOut = jsonObject.getJsonString(ENV_IPC_OUT).getString();
@@ -305,14 +306,14 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 		}
 		LOG.info("LSP4J: OnOpen is invoked");
 		LOG.info("LSP4J: Session Uri authority: " + session.getRequestURI().getAuthority());
-		if ( !launcherScript.endsWith(".sh") ) {
+		if ( !launcherScript.endsWith(".sh") && !launcherScript.endsWith(".bat") ) {
 			LOG.warning("No launcher script configured");
 			return;
 		}
-		
+
 		// set timeout
 		session.setMaxIdleTimeout(0L);
-		
+
 		this.config = endpointConfig;
         RemoteEndpoint.Basic remoteEndpointBasic = session.getBasicRemote();
 
@@ -321,33 +322,40 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
         if ( process != null ) {
         	cleanup();
         }
-        
 
- 
-        String jdtDirectory = System.getenv(ENV_BASE_DIR) + System.getenv(ENV_LSP_WORKDIR); 
+
+
+        String jdtDirectory = System.getenv(ENV_BASE_DIR) + System.getenv(ENV_LSP_WORKDIR);
         LOG.info("Working dir is " + jdtDirectory);
-		ProcessBuilder pb = new ProcessBuilder("/bin/bash",launcherScript);
+		ProcessBuilder pb = null;
+		if (launcherScript.endsWith(".sh")){
+			pb = new ProcessBuilder("/bin/bash",launcherScript);
+		}else if(launcherScript.endsWith(".bat")){
+			pb = new ProcessBuilder("cmd.exe", "/c", launcherScript);
+		}
+
 		pb.directory(new File(jdtDirectory));
 		pb.redirectErrorStream(true);
-		
+		pb.redirectOutput(Redirect.appendTo(new File(jdtDirectory + "/log.txt")));
+
 		 //File log = new File(BASE_DIR + "language_server_bin_exec_jdt/lsp.log");
 		 //pb.redirectOutput(Redirect.appendTo(log));
-		
+
 		Thread openCommunication = null;
-		
+
 		Map<String,String> env = pb.environment();
 		env.put("JAVA_HOME", System.getProperty("java.home"));
 		LOG.info("JAVA_HOME " + System.getProperty("java.home"));
-		
+
 		if ( debugClient != null )  env.put("DEBUGCLIENT", debugClient);
-		
+
 //		env.put("STDIN_PORT", "8991");
 //		env.put("STDOUT_PORT", "8990");
-		
+
 		switch (this.ipc) {
 			case SOCKET:
 		        LOG.info("Using Socket for communication");
-		        
+
 		        try {
 		        	serverSocketIn = new ServerSocket(this.socketIn);
 		        	serverSocketOut = new ServerSocket(this.socketOut);
@@ -363,7 +371,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 						try {
 							Socket sin =  serverSocketIn.accept();
 							Socket sout = serverSocketOut.accept();
-					        
+
 					        inWriter = new PrintWriter(new BufferedWriter( new OutputStreamWriter( sin.getOutputStream() )));
 					        out = new InputStreamReader( sout.getInputStream());
 						} catch (IOException ex) {
@@ -374,14 +382,14 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 		        } );
 		        openCommunication.start();
 		        break;
-		        
+
 			case NAMEDPIPES:
 		        LOG.info("Using named pipes communication");
 		        String processIn = this.pipeIn;
 		        String processOut = this.pipeOut;
 	    		env.put("STDOUT_PIPE_NAME", this.pipeIn);
 	    		env.put("STDIN_PIPE_NAME", this.pipeOut);
-		        
+
 		        openCommunication = new Thread(new Runnable() {
 
 					@Override
@@ -393,9 +401,9 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 				        	LOG.warning("Error in pipes communication " + pipeEx.toString());
 				        }
 					}
-		        	
+
 		        });
-		        
+
 		        // Create pipes
 		        try {
 			        Process mkfifoProc =new ProcessBuilder("mkfifo", processIn).inheritIO().start();
@@ -411,9 +419,8 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 			case STREAM:
 				LOG.info("Using StdIn / StdOut streams");
 		}
-		
-		try {
 
+		try {
 			process = pb.start();
 			LOG.info("Starting....");
 			if ( process.isAlive() ) {
@@ -434,7 +441,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 		        	default:
 		        		break;
 		        	}
-		        	
+
 		        } else {
 		        	// Stdin / Stdout
 					out = new InputStreamReader(process.getInputStream());
@@ -446,17 +453,17 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 
 				outputHandler = new OutputStreamHandler(remoteEndpointBasic, new BufferedReader(out) );
 				outputHandler.start();
-				
+
 			} else {
 				LOG.severe("LSP4J: JDT start failure");
 			}
-	        
+
 
 		} catch ( InterruptedException | IOException e1) {
 			//e1.printStackTrace();
 			LOG.severe("IO Exception while starting: " + e1.toString());
 		}
-		
+
 	}
 
 	@OnMessage
@@ -467,19 +474,19 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 		inWriter.write(message);
 		inWriter.flush();
 	}
-	
+
 	@OnClose
 	public void onClose(Session session, CloseReason reason ) {
 		LOG.info("LSP4J: OnClose is invoked");
 		cleanup();
 
-	}	
-	
+	}
+
 	@OnError
 	public void onError(Session session, Throwable thr) {
 		LOG.severe("On Error: " + thr.getMessage() + "\n" + thr.toString());
 	}
-	
+
 	@Override
 	public void contextDestroyed(ServletContextEvent sce) {
 		// TODO Auto-generated method stub
@@ -491,7 +498,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 		servletContext = sce.getServletContext();
 
 	}
-	
+
 	private void cleanup() {
 
 		outputHandler.interrupt();
@@ -506,14 +513,14 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
-		if ( process != null ) { 
-			if ( process.isAlive() ) 
+
+		if ( process != null ) {
+			if ( process.isAlive() )
 				process.destroyForcibly();
 			process = null;
 		}
 
 	}
-	
+
 
 }
