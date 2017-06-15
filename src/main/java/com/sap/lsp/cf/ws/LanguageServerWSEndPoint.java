@@ -458,9 +458,11 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 
 				outputHandler = new OutputStreamHandler(remoteEndpointBasic, new BufferedReader(out) );
 				outputHandler.start();
+				informReady(remoteEndpointBasic,true);
 
 			} else {
 				LOG.severe("LSP4J: JDT start failure");
+				informReady(remoteEndpointBasic,false);
 			}
 
 
@@ -472,8 +474,14 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 	}
 
 	@OnMessage
-	public void onMessage(String message) {
+	public void onMessage(String message, Session session) {
 		if ( message.length() == 0 ) return; // This is just ping!
+/*		try {
+			session.getBasicRemote().sendText("");
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}*/
 		LOG.info("InMessage \n" + message);
 		if(process == null || !process.isAlive() || inWriter == null) { LOG.warning("JDT is down"); return; }
 		inWriter.write(message);
@@ -504,6 +512,9 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 
 	}
 
+/* Private methods *
+ * 	
+ */
 	private void cleanup() {
 
 		outputHandler.interrupt();
@@ -525,6 +536,17 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 			process = null;
 		}
 
+	}
+	
+	private static final String READY_MESSAGE_HEADER = "Content-Length: %d\r\n\r\n%s";
+	private static final String READY_MESSAGE = "{\"jsonrpc\": \"2.0\",\"method\": \"protocol/Ready\"}";
+	private static final String ERROR_MESSAGE = "{\"jsonrpc\": \"2.0\",\"method\": \"protocol/Error\"}";
+	
+	private void informReady(RemoteEndpoint.Basic remote, boolean bReady) throws IOException {
+		String msg = bReady ? READY_MESSAGE : ERROR_MESSAGE;
+		String readyMsg = String.format(READY_MESSAGE_HEADER,msg.length(),msg);
+		
+		remote.sendText(readyMsg);
 	}
 
 

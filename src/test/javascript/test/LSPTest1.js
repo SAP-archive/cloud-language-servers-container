@@ -11,7 +11,7 @@ var aSubscribers = [];
 describe('Protocol test', function() {
 
 	function onMessage(msg) {
-		console.log(msg);
+		console.log("Receiving message: " + msg);
 		if ( msg.startsWith("Content-Length:") ) {
 			var body = msg.substr(msg.indexOf("{"));
 			var mObj = JSON.parse(body);
