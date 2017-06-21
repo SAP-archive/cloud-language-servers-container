@@ -49,6 +49,7 @@ public class WSSynchronization extends HttpServlet {
 	private static final String FS_CONTAINER_DIR = "container_dir";
 	private String wsSaveDir = null;
 	private WebSocketClient wsLSP = null;
+	private String saveDir;
 	
 	private static final int CHANGE_CREATED = 1;
 	private static final int CHANGE_CHANGED = 2;
@@ -62,7 +63,7 @@ public class WSSynchronization extends HttpServlet {
         super();
         // TODO Auto-generated constructor stub
     }
-    
+
     @Override
     public void init() throws ServletException {
     	String env_vcap_services = System.getenv("VCAP_SERVICES");
@@ -95,7 +96,7 @@ public class WSSynchronization extends HttpServlet {
 				}
 			}
     	}
-    	
+        this.saveDir =  wsSaveDir != null ? wsSaveDir + "/" : SAVE_DIR + "/";
     	wsLSP  = new WebSocketClient();
 
     }
@@ -122,14 +123,14 @@ public class WSSynchronization extends HttpServlet {
 		
 		String servletPath = request.getServletPath();
 		String requestURI = request.getRequestURI();
-		String saveDir = wsSaveDir != null ? wsSaveDir + "/" : SAVE_DIR;
+		String workspaceSaveDir = wsSaveDir != null ? wsSaveDir + "/" : SAVE_DIR;
 		if (servletPath.equals(requestURI))  {
 			bInitSync = true;
-			workspaceRoot = "file://" + saveDir;
+			workspaceRoot = "file://" + workspaceSaveDir;
 		} else if (requestURI.length() > servletPath.length() )  {
 			artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1 );
 			zipPath = artifactRelPath.substring(artifactRelPath.indexOf('/') + 1);
-			destination = new File(saveDir + artifactRelPath);
+			destination = new File(this.saveDir + artifactRelPath);
 			if ( destination.exists()) {
 				response.setStatus(HttpServletResponse.SC_FORBIDDEN);
 				return;
@@ -138,7 +139,7 @@ public class WSSynchronization extends HttpServlet {
 		
 		for (Part part : request.getParts()) {
 			if (bInitSync) {
-				syncWorkspace(part.getInputStream(), new File(saveDir));
+				syncWorkspace(part.getInputStream(), new File(workspaceSaveDir));
 			} else {
 				extracted = extract(new ZipInputStream(part.getInputStream()), destination, zipPath);
 			}
@@ -163,8 +164,7 @@ public class WSSynchronization extends HttpServlet {
 	 */
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		String artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1);
-		String saveDir =  wsSaveDir != null ? wsSaveDir + "/" : SAVE_DIR;
-		String artifactPath = saveDir + artifactRelPath;
+		String artifactPath = this.saveDir + artifactRelPath;
 		List<String> extracted = null;
 		
 		File destination = new File(artifactPath);
@@ -193,8 +193,7 @@ public class WSSynchronization extends HttpServlet {
 	 */	
 	protected void doDelete(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		String artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1);
-		String saveDir =  wsSaveDir != null ? wsSaveDir + "/" : SAVE_DIR;
-		String artifactPath = saveDir + artifactRelPath;
+		String artifactPath = this.saveDir + artifactRelPath;
 		List<String> deleted  = new ArrayList<String>();
 
 		File destination = new File(artifactPath);
