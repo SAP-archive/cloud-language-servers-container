@@ -129,7 +129,7 @@ public class WSSynchronization extends HttpServlet {
 		} else if (requestURI.length() > servletPath.length() )  {
 			artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1 );
 			zipPath = artifactRelPath.substring(artifactRelPath.indexOf('/') + 1);
-			destination = new File(saveDir + artifactRelPath);
+			destination = new File(saveDir + "/" + artifactRelPath);
 			if ( destination.exists()) {
 				response.setStatus(HttpServletResponse.SC_FORBIDDEN);
 				return;
@@ -164,7 +164,7 @@ public class WSSynchronization extends HttpServlet {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		String artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1);
 		String saveDir =  wsSaveDir != null ? wsSaveDir + "/" : SAVE_DIR;
-		String artifactPath = saveDir + artifactRelPath;
+		String artifactPath = saveDir + "/" + artifactRelPath;
 		List<String> extracted = null;
 		
 		File destination = new File(artifactPath);
@@ -194,7 +194,7 @@ public class WSSynchronization extends HttpServlet {
 	protected void doDelete(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		String artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1);
 		String saveDir =  wsSaveDir != null ? wsSaveDir + "/" : SAVE_DIR;
-		String artifactPath = saveDir + artifactRelPath;
+		String artifactPath = saveDir + "/" + artifactRelPath;
 		List<String> deleted  = new ArrayList<String>();
 
 		File destination = new File(artifactPath);
