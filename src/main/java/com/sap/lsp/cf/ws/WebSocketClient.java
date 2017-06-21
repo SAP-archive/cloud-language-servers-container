@@ -12,16 +12,17 @@ public class WebSocketClient {
     private CompletableFuture<String> response;
     private String waitFor;
 
-    public WebSocketClient(String uri) {
+    public void connect(String uri) {
         try {
             WebSocketContainer container = ContainerProvider
-                .getWebSocketContainer();
+                    .getWebSocketContainer();
             container.connectToServer(this, new URI(uri));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+
     }
-    
+
     public boolean isClosed() {
         return userSession == null || !userSession.isOpen();
     }
@@ -38,28 +39,25 @@ public class WebSocketClient {
 
     @OnMessage
     public void onMessage(String message) {
-    	if ( message.equals(waitFor)) {
-    		this.response.complete(message);
-    	}
+        if (message.equals(waitFor)) {
+            this.response.complete(message);
+        }
     }
 
     public CompletableFuture<String> sendRequest(String message, String response) throws RuntimeException {
-    	this.response = new CompletableFuture<String>(); 
-    	waitFor = response;
-    	if (userSession != null && userSession.isOpen())
-            try {
-                this.userSession.getBasicRemote().sendText(message);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        else {
-            throw new RuntimeException("Session closed");
-        }
-    	return this.response;
+        this.response = new CompletableFuture<String>();
+        waitFor = response;
+        sendText(message);
+        return this.response;
     }
-    
+
     public void sendNotification(String message) throws RuntimeException {
-    	if (userSession != null && userSession.isOpen())
+        sendText(message);
+
+    }
+
+    private void sendText(String message) {
+        if (userSession != null && userSession.isOpen())
             try {
                 this.userSession.getBasicRemote().sendText(message);
             } catch (IOException e) {
@@ -68,7 +66,6 @@ public class WebSocketClient {
         else {
             throw new RuntimeException("Session closed");
         }
-    	
     }
 
 }

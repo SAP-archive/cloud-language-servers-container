@@ -1,3 +1,3 @@
 #!/bin/bash
-
-ruby ./EchoSocket.rb >> rubyLog.log
+echo "staring EchoSocket mock server"
+exec ruby ./EchoSocket.rb >> rubyLog.log
