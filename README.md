@@ -23,4 +23,5 @@ This project is using [SAP Travis CI](https://travis-ci.mo.sap.corp/DevX/LSPServ
 
 # Release Build
 * Create a pull request from DevX/LSPServer to NAAS4Cloud/LSPServerCF
-* Run [Release Job](https://xmake-dev.wdf.sap.corp:8443/job/NAAS4Cloud-LSPServerCF-OD-linuxx86_64_indirectshipment/)
+* Run [Release Job](https://xmake-dev.wdf.sap.corp:8443/job/NAAS4Cloud-LSPServerCF-OD-linuxx86_64_indirectshipment/) 
+ *Choose option **Build and Deploy***
