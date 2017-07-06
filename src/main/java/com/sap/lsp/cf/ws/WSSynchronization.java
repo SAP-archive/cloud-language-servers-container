@@ -115,7 +115,6 @@ public class WSSynchronization extends HttpServlet {
 	protected void doPut(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
 		String artifactRelPath = "";
-		String zipPath = "";
 		boolean bInitSync = false;
 		File destination = null;
 		List<String> extracted = null;
@@ -129,7 +128,6 @@ public class WSSynchronization extends HttpServlet {
 			workspaceRoot = "file://" + workspaceSaveDir;
 		} else if (requestURI.length() > servletPath.length() )  {
 			artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1 );
-			zipPath = artifactRelPath.substring(artifactRelPath.indexOf('/') + 1);
 			destination = new File(this.saveDir + artifactRelPath);
 			if ( destination.exists()) {
 				response.setStatus(HttpServletResponse.SC_FORBIDDEN);
@@ -141,7 +139,7 @@ public class WSSynchronization extends HttpServlet {
 			if (bInitSync) {
 				syncWorkspace(part.getInputStream(), new File(workspaceSaveDir));
 			} else {
-				extracted = extract(new ZipInputStream(part.getInputStream()), destination, zipPath);
+				extracted = extract(new ZipInputStream(part.getInputStream()), destination, artifactRelPath);
 			}
 		}
 		
@@ -168,13 +166,12 @@ public class WSSynchronization extends HttpServlet {
 		List<String> extracted = null;
 		
 		File destination = new File(artifactPath);
-		String zipPath = artifactRelPath.substring(artifactRelPath.indexOf('/') + 1);
 		for (Part part : request.getParts()) {
 			ZipInputStream zipinputstream = new ZipInputStream(part.getInputStream());
 			if ( destination.exists() && destination.isDirectory()) {
 				//moduleRoot = "file://" + syncProject(part.getInputStream(), destination);
 			} else if (destination.exists()) {
-				 extracted = extract(zipinputstream, destination, zipPath);
+				 extracted = extract(zipinputstream, destination, artifactRelPath);
 			}
 			if ( wsLSP.isClosed() ) {
 				wsLSP.connect("ws://localhost:8080/LanguageServer?local");
@@ -247,8 +244,6 @@ public class WSSynchronization extends HttpServlet {
 			zipentry = zipinputstream.getNextEntry();
 		        while (zipentry != null) {
 		            int n;
-		            FileOutputStream fileoutputstream;
-		            
 		            File newFile = new File(destination, zipentry.getName());
 		            LOG.info("UNZIP Creating " + newFile.getAbsolutePath());
 		            
@@ -274,13 +269,12 @@ public class WSSynchronization extends HttpServlet {
 		            		projectRoot = newFile.getParent();	
 		            }
 		
-		            fileoutputstream = new FileOutputStream(newFile);
+		            try (FileOutputStream fileoutputstream = new FileOutputStream(newFile)) {
+						while ((n = zipinputstream.read(buf, 0, 1024)) > -1) {
+							fileoutputstream.write(buf, 0, n);
+						}
+					}
 		
-		            while ((n = zipinputstream.read(buf, 0, 1024)) > -1) {
-		                fileoutputstream.write(buf, 0, n);
-		            }
-		
-		            fileoutputstream.close();
 		            zipinputstream.closeEntry();
 		            if ( !newFile.exists()) LOG.warning("File creation error");
 		            zipentry = zipinputstream.getNextEntry();
@@ -308,8 +302,6 @@ public class WSSynchronization extends HttpServlet {
 			zipentry = zipinputstream.getNextEntry();
 		        while (zipentry != null) {
 		            int n;
-		            FileOutputStream fileoutputstream;
-		            
 		            if ( !zipentry.getName().equals(zipPath)) {
 		            	zipentry = zipinputstream.getNextEntry();
 		            	continue;
@@ -318,13 +310,11 @@ public class WSSynchronization extends HttpServlet {
 		            File newFile = destination;
 		            LOG.info("UNZIP Updating " + newFile.getAbsolutePath());
 		            
-		            fileoutputstream = new FileOutputStream(newFile);
-		
-		            while ((n = zipinputstream.read(buf, 0, 1024)) > -1) {
-		                fileoutputstream.write(buf, 0, n);
-		            }
-		
-		            fileoutputstream.close();
+		            try (FileOutputStream fileoutputstream = new FileOutputStream(newFile)){
+						while ((n = zipinputstream.read(buf, 0, 1024)) > -1) {
+							fileoutputstream.write(buf, 0, n);
+						}
+					}
 		            zipinputstream.closeEntry();
 		            if ( !newFile.exists()) LOG.warning("File creation error");
 		            extracted.add(newFile.getPath());
