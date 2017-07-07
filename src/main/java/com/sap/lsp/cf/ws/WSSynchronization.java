@@ -139,7 +139,7 @@ public class WSSynchronization extends HttpServlet {
 			if (bInitSync) {
 				syncWorkspace(part.getInputStream(), new File(workspaceSaveDir));
 			} else {
-				extracted = extract(new ZipInputStream(part.getInputStream()), destination, artifactRelPath);
+				extracted = extract(new ZipInputStream(part.getInputStream()), destination, "/" + artifactRelPath);
 			}
 		}
 		
@@ -171,7 +171,7 @@ public class WSSynchronization extends HttpServlet {
 			if ( destination.exists() && destination.isDirectory()) {
 				//moduleRoot = "file://" + syncProject(part.getInputStream(), destination);
 			} else if (destination.exists()) {
-				 extracted = extract(zipinputstream, destination, artifactRelPath);
+				 extracted = extract(zipinputstream, destination, "/" + artifactRelPath);
 			}
 			if ( wsLSP.isClosed() ) {
 				wsLSP.connect("ws://localhost:8080/LanguageServer?local");
