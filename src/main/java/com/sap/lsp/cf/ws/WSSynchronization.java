@@ -338,7 +338,7 @@ public class WSSynchronization extends HttpServlet {
 		
 		JsonArrayBuilder changes = Json.createArrayBuilder();
 		for (String sUrl: artifacts) {
-			changes.add(Json.createObjectBuilder().add("uri",sUrl).add("type", type).build());
+			changes.add(Json.createObjectBuilder().add("uri", "file://" + sUrl).add("type", type).build());
 		}
 
 		JsonObject bodyObj = Json.createObjectBuilder()
