@@ -8,10 +8,12 @@ import java.io.IOException;
 import java.util.logging.Logger;
 
 
-@WebFilter(filterName = "LanguageServerFilter", urlPatterns = {"/WSSynchronization/*"})
+@WebFilter(filterName = "LanguageServerFilter", urlPatterns = {"/WSSynchronization/*", "/UpdateToken/*"})
 public class LanguageServerFilter implements Filter {
 
     private static final Logger LOG = Logger.getLogger(LanguageServerFilter.class.getName());
+
+    private static final String DI_TOKEN_ENV = "DiToken";
 
     @Override
     public void init(FilterConfig filterConfig) throws ServletException {
@@ -23,10 +25,10 @@ public class LanguageServerFilter implements Filter {
         LOG.info("LSP filter doFilter");
         HttpServletResponse httpResponse = (HttpServletResponse) servletResponse;
         String requestUuid = extractDIToken(servletRequest);
-        if (System.getenv().containsKey("DiToken")) {
-            String diToken = System.getenv("DiToken");
+        if (System.getenv().containsKey(DI_TOKEN_ENV)) {
+            String diToken = System.getenv(DI_TOKEN_ENV);
             if (!diToken.equals(requestUuid)) {
-                LOG.info("Invalid request - token mismatch.");
+                LOG.warning("Invalid request - token mismatch. Got token " + requestUuid);
                 httpResponse.sendError(HttpServletResponse.SC_UNAUTHORIZED, "invalid request - token mismatch");
                 return;
             }
@@ -38,9 +40,9 @@ public class LanguageServerFilter implements Filter {
     public void destroy() {
 
     }
+
     private String extractDIToken(ServletRequest request) {
-        String diToken = ((HttpServletRequest) request).getHeader("DiToken");
-        return diToken;
+        return ((HttpServletRequest) request).getHeader("DiToken");
     }
 
 }
