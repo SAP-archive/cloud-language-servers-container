@@ -8,7 +8,7 @@ var ws;
 var openPromise;
 var aSubscribers = [];
 
-describe('Protocol test (LSP is socket client)', () => {
+describe('Protocol test (LSP is socket server)', () => {
 	
 
 	function onMessage(msg) {
@@ -41,7 +41,7 @@ describe('Protocol test (LSP is socket client)', () => {
 					openRes(true);
 				}})
 			});
-			var ws_o = new WebSocket('ws://localhost:8080/LanguageServer/abcd/java');
+			var ws_o = new WebSocket('ws://localhost:8080/LanguageServer/abcd/cdx');
 			ws_o.on('open',function open(){
 				ws = ws_o;
 				ws.on('message',onMessage);

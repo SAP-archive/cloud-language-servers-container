@@ -1,19 +1,20 @@
 ---
 applications:
-- name: LSP-JDT-I016373
+- name: LSP-XX-I016373
   memory: 1024M
   instances: 1
   path: target/LSPServerCF.war
 #  buildpack: https://github.com/cloudfoundry/java-buildpack.git
 #  buildpack: https://java-buildpack-dev.cfapps.sap.hana.ondemand.com/.git
-  buildpack: https://github.com/PavelSosin/java-buildpack.git
+  buildpack: https://github.com/PavelSosin/java-buildpack.git#lsp_cdx
   stack: cflinuxfs2
   env: 
     JAVA-OPTS: -agentlib:jdwp=transport=dt_socket,address=195.93.234.9:8000
     JBP_CONFIG_DEBUG: '{enabled: true}'
-    basedir: /home/vcap/app/.java-buildpack/
-    workdir: language_server_bin_exec_jdt/
-    exec: language_server_bin_exec_jdt/launcher.sh
-    IPC: > 
-      {"socket": { "in": 8991, "out": 8990 }}   
+    lspservers: java,cdx
+#    basedir: /home/vcap/app/.java-buildpack/
+#    workdir: language_server_bin_exec_jdt/
+#    exec: language_server_bin_exec_jdt/launcher.sh
+#    IPC: > 
+#      {"socket": { "in": 8991, "out": 8990 }}   
  

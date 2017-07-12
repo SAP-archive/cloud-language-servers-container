@@ -2,7 +2,7 @@ language: java
 jdk:
   - oraclejdk8
 env:
-  - IPC='{"socket":{"in":8991, "out":8990}}' basedir=$TRAVIS_BUILD_DIR/src/test/ workdir=util/ exec=util/EchoLauncher.sh
+  - lspservers=java,cdx basedir=$TRAVIS_BUILD_DIR/src/test/ LSPJAVA_workdir=util/ LSPCDX_workdir=util/ LSPJAVA_exec=util/EchoLauncher.sh LSPCDX_exec=util/EchoLauncher2.sh LSPJAVA_protocol=socket LSPJAVA_inport=8991 LSPJAVA_outport=8990 LSPJAVA_STDIN_PORT=8991 LSPJAVA_STDOUT_PORT=8990 LSPCDX_protocol="socket-client" LSPCDX_clientport=8765 
 
 before_install:
   - curl -o 'settings.xml' 'http://nexus.wdf.sap.corp:8081/nexus/service/local/templates/settings/LeanDI/content'
