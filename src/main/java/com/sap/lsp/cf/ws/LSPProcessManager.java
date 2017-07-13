@@ -1,17 +1,8 @@
 package com.sap.lsp.cf.ws;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.io.Reader;
+import javax.websocket.RemoteEndpoint;
+import javax.websocket.RemoteEndpoint.Basic;
+import java.io.*;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -21,25 +12,25 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
 
-import javax.websocket.RemoteEndpoint;
-import javax.websocket.RemoteEndpoint.Basic;
-
 public class LSPProcessManager {
 
-	public static final String ENV_IPC = "IPC";
-	public static final String ENV_IPC_SOCKET = "socket";
-	public static final String ENV_IPC_PIPES = "pipes";
-	public static final String ENV_IPC_CLIENT = "socket-client";
+	private static final String ENV_IPC_SOCKET = "socket";
+	private static final String ENV_IPC_PIPES = "pipes";
+	private static final String ENV_IPC_CLIENT = "socket-client";
 	
-	public static final String ENV_IPC_INPORT = "inport";
-	public static final String ENV_IPC_OUTPORT = "outport";
-	public static final String ENV_PIPE_IN = "pipein";
-	public static final String ENV_PIPE_OUT = "pipeout";
-	public static final String ENV_IPC_CLIENTPORT = "clientport";
+	private static final String ENV_IPC_IN_PORT = "inport";
+	private static final String ENV_IPC_OUT_PORT = "outport";
+	private static final String ENV_PIPE_IN = "pipein";
+	private static final String ENV_IPC_CLIENT_PORT = "clientport";
 
 //	public static final String DEBUG_CLIENT = "debugclient";
 	
 	private static final Logger LOG = Logger.getLogger(LSPProcessManager.class.getName());
+
+	void cleanProcess(String ws, String lang) {
+		LSPProcess lspProc = lspProcesses.remove(LSPProcessManager.processKey(ws, lang));
+		lspProc.cleanup();
+	}
 
 	private static class OutputStreamHandler extends Thread {
 
@@ -49,7 +40,6 @@ public class LSPProcessManager {
 
 		private final Basic remote;
 		private final BufferedReader out;
-		// private final InputStreamReader pipeReader;
 		private boolean keepRunning;
 
 		private static class Headers {
@@ -107,8 +97,6 @@ public class LSPProcessManager {
 		}
 
 		public void run() {
-			// StringBuffer message = new StringBuffer();
-			Thread thisThread = Thread.currentThread();
 			LOG.info("LSP: Listening...");
 			keepRunning = true;
 			StringBuilder headerBuilder = null;
@@ -116,16 +104,12 @@ public class LSPProcessManager {
 			boolean newLine = false;
 			Headers headers = new Headers();
 
-			while (keepRunning && !thisThread.isInterrupted()) {
+			while (keepRunning) {
 				try {
 					int c = out.read();
 					if (c == -1) {
 						// End of input stream has been reached
-						try {
-							Thread.sleep(100);
-						} catch (InterruptedException e) {
-							continue;
-						}
+						Thread.sleep(100);
 					} else {
 						if (debugBuilder == null)
 							debugBuilder = new StringBuilder();
@@ -168,7 +152,7 @@ public class LSPProcessManager {
 							newLine = false;
 						}
 					}
-				} catch (IOException e) {
+				} catch (InterruptedException | IOException e) {
 					LOG.severe("Out stream handler error: " + e.toString());
 					keepRunning = false;
 				}
@@ -179,6 +163,9 @@ public class LSPProcessManager {
 
 	};
 
+	/**
+	 * Responsible for putting the LSP process logs in the standard server log
+	 */
 	private static class LogStreamHandler extends Thread {
 		private final BufferedReader log;
 
@@ -187,21 +174,15 @@ public class LSPProcessManager {
 		}
 
 		public void run() {
-			// StringBuffer message = new StringBuffer();
-			Thread thisThread = Thread.currentThread();
 			LOG.info("LSP: Listening for log...");
 			StringBuilder logBuilder = null;
 			boolean keepRunning = true;
-			while (keepRunning && !thisThread.isInterrupted()) {
+			while (keepRunning) {
 				try {
 					int c = log.read();
 					if (c == -1)
 						// End of input stream has been reached
-						try {
-							Thread.sleep(100);
-						} catch (InterruptedException e) {
-							continue;
-						}
+						Thread.sleep(100);
 					else {
 						if (logBuilder == null)
 							logBuilder = new StringBuilder();
@@ -211,18 +192,16 @@ public class LSPProcessManager {
 							logBuilder = null;
 						}
 					}
-				} catch (IOException ioex) {
-					LOG.warning("Log stream error: " + ioex.toString());
-					return;
+				} catch (InterruptedException | IOException e) {
+					LOG.warning("Log error: " + e.toString());
+					keepRunning = false;
 				}
 			}
-
 		}
 
 	}
 
 	public static class LSPProcess {
-
 		private enum IPC {
 			SOCKET, NAMEDPIPES, STREAM, CLIENTSOCKET
 		};
@@ -266,6 +245,7 @@ public class LSPProcessManager {
 					serverSocketOut = new ServerSocket(this.socketOut);
 				} catch (IOException ex) {
 					LOG.warning("Error in Socket communication " + ex.toString());
+					throw new LSPException(ex);
 				}
 				openCommunication = new Thread(new Runnable() {
 
@@ -382,7 +362,14 @@ public class LSPProcessManager {
 
 			if (outputHandler != null && outputHandler.isAlive()) outputHandler.interrupt();
 			if (logHandler != null && logHandler.isAlive() ) logHandler.interrupt();
-			
+
+			// !! Process must be closed before closing the LSP out reader otherwise the out reader is stuck on close!!!
+			if ( process != null ) {
+				if ( process.isAlive() )
+					process.destroyForcibly();
+				process = null;
+			}
+
 			try {
 				if ( inWriter != null ) inWriter.close();
 				if ( out != null ) out.close();
@@ -399,12 +386,6 @@ public class LSPProcessManager {
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-			}
-
-			if ( process != null ) {
-				if ( process.isAlive() )
-					process.destroyForcibly();
-				process = null;
 			}
 
 		}
@@ -455,67 +436,61 @@ public class LSPProcessManager {
 
 	private Map<String, LSPProcess> lspProcesses = Collections.synchronizedMap(new HashMap<String, LSPProcess>());
 
-	public synchronized LSPProcess getProcess(String wsKey, String lang, RemoteEndpoint.Basic remoteEndpoint) {
+	public synchronized LSPProcess createProcess(String wsKey, String lang, RemoteEndpoint.Basic remoteEndpoint) {
 
 		String procKey = processKey(wsKey,lang);
-		if (lspProcesses.containsKey(procKey))
-			return lspProcesses.get(procKey);
-		else {
-			String rpcType = langContexts.get(lang).getRpcType();
-			LSPProcess newlsp = new LSPProcess(langContexts.get(lang).getProcessBuilder(), remoteEndpoint);
-			switch(rpcType) {
-			case ENV_IPC_SOCKET:
-				socketEnv(newlsp, LangServerCtx.LangPrefix(lang));
-				break;
-			case ENV_IPC_PIPES:
-				pipeEnv(newlsp, LangServerCtx.LangPrefix(lang));
-				break;
-			case ENV_IPC_CLIENT:
-				clientSocketEnv(newlsp, LangServerCtx.LangPrefix(lang));
-				break;
-			default:
-				streamEnv(newlsp);
-			}
-			lspProcesses.put(procKey, newlsp);
-			return newlsp;
+		String rpcType = langContexts.get(lang).getRpcType();
+		LSPProcess newlsp = new LSPProcess(langContexts.get(lang).getProcessBuilder(), remoteEndpoint);
+		switch(rpcType) {
+		case ENV_IPC_SOCKET:
+			socketEnv(newlsp, LangServerCtx.LangPrefix(lang));
+			break;
+		case ENV_IPC_PIPES:
+			pipeEnv(newlsp, LangServerCtx.LangPrefix(lang));
+			break;
+		case ENV_IPC_CLIENT:
+			clientSocketEnv(newlsp, LangServerCtx.LangPrefix(lang));
+			break;
+		default:
+			streamEnv(newlsp);
 		}
+		lspProcesses.put(procKey, newlsp);
+		return newlsp;
 	}
 
 	public static String processKey(String ws, String lang) {
-		// TODO Auto-generated method stub
 		return ws + ":" + lang;
 	}
 
-	public LSPProcess getHeadProcess(String proceesKey) {
-		// TODO Auto-generated method stub
-		return lspProcesses.get(proceesKey);
+	public LSPProcess getProcess(String processKey) {
+		return lspProcesses.get(processKey);
 	}
 
-	private void pipeEnv(LSPProcess newlsp, String prefix) {
-		newlsp.confIpc(LSPProcess.IPC.NAMEDPIPES, System.getenv(prefix + ENV_PIPE_IN), System.getenv(prefix + ENV_IPC_OUTPORT)); 
+	private void pipeEnv(LSPProcess newLsp, String prefix) {
+		newLsp.confIpc(LSPProcess.IPC.NAMEDPIPES, System.getenv(prefix + ENV_PIPE_IN), System.getenv(prefix + ENV_IPC_OUT_PORT));
 		//LOG.info(String.format("Named pipe IPC: in %s out %s",this.pipeIn, this.pipeOut));
 	}
 
-	private void socketEnv(LSPProcess newlsp, String prefix) {
+	private void socketEnv(LSPProcess newLsp, String prefix) {
 		try {
-			newlsp.confIpc(LSPProcess.IPC.SOCKET, Integer.parseInt(System.getenv(prefix + ENV_IPC_INPORT)), Integer.parseInt(System.getenv(prefix + ENV_IPC_OUTPORT)));
+			newLsp.confIpc(LSPProcess.IPC.SOCKET, Integer.parseInt(System.getenv(prefix + ENV_IPC_IN_PORT)), Integer.parseInt(System.getenv(prefix + ENV_IPC_OUT_PORT)));
 		//LOG.info(String.format("Socket IPC: in %d out %d",this.socketIn, this.socketOut));
 		} catch ( NumberFormatException fe) {
 			throw new LSPConfigurationException();
 		}
 	}
 
-	private void clientSocketEnv(LSPProcess newlsp, String prefix) {
+	private void clientSocketEnv(LSPProcess newLsp, String prefix) {
 		try {
-			newlsp.confIpc(LSPProcess.IPC.CLIENTSOCKET, Integer.parseInt(System.getenv(prefix + ENV_IPC_CLIENTPORT)));
+			newLsp.confIpc(LSPProcess.IPC.CLIENTSOCKET, Integer.parseInt(System.getenv(prefix + ENV_IPC_CLIENT_PORT)));
 		//LOG.info(String.format("Client socket IPC: %d", this.clientSocketPort));
 		} catch ( NumberFormatException fe) {
 			throw new LSPConfigurationException();
 		}
 	}
 	
-	private void streamEnv(LSPProcess newlsp) {
-		newlsp.confIpc(LSPProcess.IPC.STREAM);
+	private void streamEnv(LSPProcess newLsp) {
+		newLsp.confIpc(LSPProcess.IPC.STREAM);
 	}
 
 }
