@@ -41,7 +41,7 @@ describe('Protocol test (LSP is socket server)', () => {
 					openRes(true);
 				}})
 			});
-			var ws_o = new WebSocket('ws://localhost:8080/LanguageServer/abcd/cdx');
+			var ws_o = new WebSocket('ws://localhost:8080/LanguageServer/ws/cdx');
 			ws_o.on('open',function open(){
 				ws = ws_o;
 				ws.on('message',onMessage);
@@ -54,7 +54,7 @@ describe('Protocol test (LSP is socket server)', () => {
 
 		return PromiseTimeout.timeout(new Promise(function(resolve,reject){
 			if ( ws ) {
-				ws.clgitose();
+				ws.close();
 				ws.on('close',function close() {
 					ws = null;
 				});

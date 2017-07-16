@@ -41,7 +41,7 @@ before(function(){
                 openRes(true);
             }})
         });
-        var ws_o = new WebSocket('ws://localhost:8080/LanguageServer/abcd/java');
+        var ws_o = new WebSocket('ws://localhost:8080/LanguageServer/ws/java');
         ws_o.on('open',function open(){
             ws = ws_o;
             ws.on('message',onMessage);

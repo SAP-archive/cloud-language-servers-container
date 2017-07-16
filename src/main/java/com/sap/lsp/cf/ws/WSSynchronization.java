@@ -139,7 +139,7 @@ public class WSSynchronization extends HttpServlet {
 
 		if (extracted != null) {
 			if ( wsLSP.isClosed() ) {
-				wsLSP.connect("ws://localhost:8080/LanguageServer/abcd/java?local");
+				wsLSP.connect("ws://localhost:8080/LanguageServer/ws/java?local");
 			}
 			String msg = buildLSPNotification(CHANGE_CREATED, extracted);
 			wsLSP.sendNotification(msg);
@@ -163,7 +163,7 @@ public class WSSynchronization extends HttpServlet {
 				 extracted = extract(zipinputstream, destination, "/" + artifactRelPath);
 			}
 			if ( wsLSP.isClosed() ) {
-				wsLSP.connect("ws://localhost:8080/LanguageServer/abcd/java?local");
+				wsLSP.connect("ws://localhost:8080/LanguageServer/ws/java?local");
 			}
 			String msg = buildLSPNotification(CHANGE_CHANGED, extracted);
 			wsLSP.sendNotification(msg);
@@ -191,7 +191,7 @@ public class WSSynchronization extends HttpServlet {
 			response.setContentType("application/json");
 			response.getWriter().append(String.format("{ \"deleted\": \"%s\"}", artifactRelPath));
 			if ( wsLSP.isClosed() ) {
-				wsLSP.connect("ws://localhost:8080/LanguageServer/abcd/java?local");
+				wsLSP.connect("ws://localhost:8080/LanguageServer/ws/java?local");
 			}
 			deleted.add(artifactPath);
 			String msg = buildLSPNotification(CHANGE_DELETED, deleted);
