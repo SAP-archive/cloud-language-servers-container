@@ -54,7 +54,7 @@ describe('Protocol test (LSP is socket server)', () => {
 
 		return PromiseTimeout.timeout(new Promise(function(resolve,reject){
 			if ( ws ) {
-				ws.close();
+				ws.clgitose();
 				ws.on('close',function close() {
 					ws = null;
 				});
