@@ -95,6 +95,10 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 
 	@OnClose
 	public void onClose(@PathParam("ws") String ws, @PathParam("lang") String lang, Session session, CloseReason reason ) {
+		Map<String,List<String>> reqParam = session.getRequestParameterMap();
+		if ( reqParam != null && reqParam.containsKey("local") ) {
+			return;
+		}
 		LOG.info("LSP: OnClose is invoked");
 		procManager.cleanProcess(ws, lang);
 

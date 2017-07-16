@@ -30,7 +30,7 @@ maxFileSize=1024*1024*10,		// 10MB
 maxRequestSize=1024*1024*50)	// 50MB
 public class WSSynchronization extends HttpServlet {
 	private static final long serialVersionUID = 1L;
-	private static final String SAVE_DIR = System.getenv("HOME") + "/di_ws_root"; 
+	private static final String SAVE_DIR = System.getenv("HOME") != null ? System.getenv("HOME") + "/di_ws_root" : System.getenv("HOMEPATH") + "/di_ws_root";
 	private static final Logger LOG = Logger.getLogger(WSSynchronization.class.getName());
 	private static final String FS_STORAGE = "fs-storage";
 	private static final String FS_TAGS = "tags";
@@ -103,7 +103,6 @@ public class WSSynchronization extends HttpServlet {
 	 * @see HttpServlet#doPut(HttpServletRequest request, HttpServletResponse response)
 	 */
 	protected void doPut(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-
 		String artifactRelPath = "";
 		boolean bInitSync = false;
 		File destination = null;
@@ -140,7 +139,7 @@ public class WSSynchronization extends HttpServlet {
 
 		if (extracted != null) {
 			if ( wsLSP.isClosed() ) {
-				wsLSP.connect("ws://localhost:8080/LanguageServer?local");
+				wsLSP.connect("ws://localhost:8080/LanguageServer/abcd/java?local");
 			}
 			String msg = buildLSPNotification(CHANGE_CREATED, extracted);
 			wsLSP.sendNotification(msg);
@@ -164,7 +163,7 @@ public class WSSynchronization extends HttpServlet {
 				 extracted = extract(zipinputstream, destination, "/" + artifactRelPath);
 			}
 			if ( wsLSP.isClosed() ) {
-				wsLSP.connect("ws://localhost:8080/LanguageServer?local");
+				wsLSP.connect("ws://localhost:8080/LanguageServer/abcd/java?local");
 			}
 			String msg = buildLSPNotification(CHANGE_CHANGED, extracted);
 			wsLSP.sendNotification(msg);
@@ -192,7 +191,7 @@ public class WSSynchronization extends HttpServlet {
 			response.setContentType("application/json");
 			response.getWriter().append(String.format("{ \"deleted\": \"%s\"}", artifactRelPath));
 			if ( wsLSP.isClosed() ) {
-				wsLSP.connect("ws://localhost:8080/LanguageServer?local");
+				wsLSP.connect("ws://localhost:8080/LanguageServer/abcd/java?local");
 			}
 			deleted.add(artifactPath);
 			String msg = buildLSPNotification(CHANGE_DELETED, deleted);
