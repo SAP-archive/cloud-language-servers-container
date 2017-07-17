@@ -69,10 +69,12 @@ describe('Protocol test (LSP is socket client)', () => {
 
 	it('Check for Reload WebIDE', function() {
 		this.timeout(1000);
-		return openAndClose().then(function(res1,rej1){
-			return openAndClose().then(function(res2,rej2){
-				//TODO Pavel to fix this
-				//res2(true);
+		return openAndClose().then(function(bOpen1){
+			console.log("1st time open & close " + bOpen1);
+			expect(bOpen1).to.be.true;
+			return openAndClose().then(function(bOpen2){
+				console.log("After reload " + bOpen2);
+				expect(bOpen2).to.be.true;
 			});
 		});
 
