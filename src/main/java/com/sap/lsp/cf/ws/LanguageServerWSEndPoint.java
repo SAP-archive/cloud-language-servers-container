@@ -81,12 +81,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 	@OnMessage
 	public void onMessage(@PathParam("ws") String ws, @PathParam("lang") String lang, String message, Session session) {
 		if ( message.length() == 0 ) return; // This is just ping!
-/*		try {
-			session.getBasicRemote().sendText("");
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}*/
+		IdleTimeHolder.getInstance().registerUserActivity();
 		LOG.info("LSP: onMessage is invoked: \n" + message);
 		LOG.info(String.format("LSP: get Head Process for lang %s session %s", lang, session.getId()));
 		LSPProcess lspProc = procManager.getProcess(LSPProcessManager.processKey(ws, lang));

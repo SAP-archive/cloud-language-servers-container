@@ -8,7 +8,6 @@ const expect = require("chai").expect;
 var aSubscribers = [];
 
 describe('Protocol test (LSP is socket client)', () => {
-	
 
 	function onMessage(msg) {
 		console.log("Receiving message: " + msg);
@@ -60,7 +59,6 @@ describe('Protocol test (LSP is socket client)', () => {
 	}
 
 	before(function(){
-		// debugger;
 	});
 
 	after(function(){

@@ -20,7 +20,7 @@ public class WebsocketTokenValidator {
 
 	public boolean validateToken(String token) {
 		Date date = new Date();
-		return (tokenValidator.token == token && date.before(tokenValidator.timestamp));
+		return tokenValidator.token.equals(token) && date.before(tokenValidator.timestamp);
 	}
 
 	public void update(String token, Date timestamp) {

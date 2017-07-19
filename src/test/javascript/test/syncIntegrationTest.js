@@ -24,7 +24,7 @@ describe('Sync Integration Test', function () {
         if (res) {
             folderPath = body.substring(7);
             filePath = path.join(path.normalize(folderPath + "/test.js"));
-            if (res.statusCode == 201 && fs.existsSync(filePath)) {
+            if (res.statusCode === 201 && fs.existsSync(filePath)) {
                 assert("Put request succeeded");
             } else {
                 assert.fail("Error creating file");
@@ -39,7 +39,7 @@ describe('Sync Integration Test', function () {
 
     function onPostResponse(err, res, body, resolve, reject) {
         if (res) {
-            if (res.statusCode == 200 && fs.existsSync(filePath)) {
+            if (res.statusCode === 200 && fs.existsSync(filePath)) {
                 // if (fs.readFileSync(filePath).toString() == "test") {
                 //     assert("Post request succeeded");
                 // } else {
@@ -58,7 +58,7 @@ describe('Sync Integration Test', function () {
 
     function onDeleteResponse(err, res, body, resolve, reject) {
         if (res) {
-            if (res.statusCode == 200 && !fs.existsSync(filePath)) {
+            if (res.statusCode === 200 && !fs.existsSync(filePath)) {
                 assert("Delete request succeeded");
             } else {
                 assert.fail("Error deleting file");
