@@ -70,7 +70,31 @@
 		<!-- To run websockets client -->
 
 			 <!--Jetty JSR-356 Websocket server side dependency -->
+		<dependency>
+		    <groupId>org.powermock</groupId>
+		    <artifactId>powermock-module-junit4</artifactId>
+		    <version>1.6.4</version>
+		    <scope>test</scope>
+		</dependency>
+		<dependency>
+		    <groupId>org.powermock</groupId>
+		    <artifactId>powermock-api-mockito</artifactId>
+		    <version>1.6.4</version>
+		    <scope>test</scope>
+		</dependency>		
 
+		 <dependency>
+		 	<groupId>org.powermock</groupId>
+		 	<artifactId>powermock-api-easymock</artifactId>
+		 	<version>1.6.4</version>
+		 	<scope>test</scope>
+		 </dependency>
+		 <dependency>
+		 	<groupId>org.easymock</groupId>
+		 	<artifactId>easymock</artifactId>
+		 	<version>3.4</version>
+		 	<scope>test</scope>
+		 </dependency>
 
 	</dependencies>
 	<dependencyManagement>

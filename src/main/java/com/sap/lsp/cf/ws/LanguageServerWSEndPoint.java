@@ -67,9 +67,8 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 	        session.getUserProperties().put(LANG_SRV_PROCESS, process);
 			informReady(remoteEndpointBasic, true);
 		} catch (LSPException e) {
-			// TODO Auto-generated catch block
 			informReady(remoteEndpointBasic, false);
-			session.close(new CloseReason(null,"Fatal error"));
+			session.close(new CloseReason(CloseReason.CloseCodes.CLOSED_ABNORMALLY,"Fatal error"));
 		}
         
         } catch (IOException ex) {

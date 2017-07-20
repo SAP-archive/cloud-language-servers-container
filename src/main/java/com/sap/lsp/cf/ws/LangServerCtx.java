@@ -13,10 +13,10 @@ public class LangServerCtx extends HashMap<String,String> {
 	 */
 	private static final long serialVersionUID = 6250146579876230161L;
 	private static String BASE_DIR = "/home/vcap/app/.java-buildpack/";
-	private static final String ENV_LSP_WORKDIR = "workdir"; 
-	private static final String ENV_LAUNCHER = "exec";
-	private static final String ENV_RPCTYPE = "protocol";
-
+	public static final String ENV_LSP_WORKDIR = "workdir"; 
+	public static final String ENV_LAUNCHER = "exec";
+	public static final String ENV_RPCTYPE = "protocol";
+	
 	private final String lang;
 	private String launcherScript;
 	private String workdir;
@@ -49,7 +49,7 @@ public class LangServerCtx extends HashMap<String,String> {
 		} else {
 			this.launcherScript = BASE_DIR + get(ENV_LAUNCHER);
 			if ( !launcherScript.endsWith(".sh") || !(new File(launcherScript).exists()) ) {
-				LOG.warning("No launcher script exists");
+				LOG.warning("No launcher script exists " + launcherScript);
 				throw new LSPConfigurationException();
 			}
 			LOG.info("LSP luancher is: " + launcherScript);
@@ -88,5 +88,7 @@ public class LangServerCtx extends HashMap<String,String> {
 		return "LSP" + lang.toUpperCase() + "_";
 	}
 
-	
+	protected void setBaseDir(String baseDir) {
+		BASE_DIR = baseDir;
+	}	
 }
