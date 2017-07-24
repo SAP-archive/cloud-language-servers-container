@@ -4,6 +4,7 @@ import javax.websocket.*;
 import java.io.IOException;
 import java.net.URI;
 import java.util.concurrent.CompletableFuture;
+import java.util.logging.Logger;
 
 @ClientEndpoint
 public class WebSocketClient {
@@ -11,6 +12,8 @@ public class WebSocketClient {
     private Session userSession = null;
     private CompletableFuture<String> response;
     private String waitFor;
+    
+    private static final Logger LOG = Logger.getLogger(WebSocketClient.class.getName());
 
     public void connect(String uri) {
         try {
@@ -44,6 +47,16 @@ public class WebSocketClient {
         }
     }
 
+    @OnError
+    public void onError(Session session, Throwable trowable) {
+    	if ( trowable != null ) {
+    		LOG.severe("SYNC Client error: " + trowable.getMessage());
+    	} else {
+    		LOG.severe("SYNC Client error: unknown error");
+    	}
+    	
+    }
+    
     public CompletableFuture<String> sendRequest(String message, String response) throws RuntimeException {
         this.response = new CompletableFuture<String>();
         waitFor = response;

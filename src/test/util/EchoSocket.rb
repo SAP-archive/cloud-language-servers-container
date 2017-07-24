@@ -1,7 +1,7 @@
 require 'socket'
 
-clientIn = TCPSocket.new 'localhost', 8991
-clientOut = TCPSocket.new 'localhost', 8990
+clientIn = TCPSocket.new 'localhost', ENV["STDIN_PORT"].to_i #8991
+clientOut = TCPSocket.new 'localhost', ENV["STDOUT_PORT"].to_i #8990
 
 puts "Connection is opened"
 

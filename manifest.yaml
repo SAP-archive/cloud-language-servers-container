@@ -1,6 +1,6 @@
 ---
 applications:
-- name: LSP-JDT-I016373
+- name: lsp-devx-Monaco-workspace01zdux8d2klq61um-I066470
   memory: 1024M
   instances: 1
   path: target/LSPServerCF.war
@@ -11,9 +11,5 @@ applications:
   env: 
     JAVA-OPTS: -agentlib:jdwp=transport=dt_socket,address=195.93.234.9:8000
     JBP_CONFIG_DEBUG: '{enabled: true}'
-    basedir: /home/vcap/app/.java-buildpack/
-    workdir: language_server_bin_exec_jdt/
-    exec: language_server_bin_exec_jdt/launcher.sh
-    IPC: > 
-      {"socket": { "in": 8991, "out": 8990 }}   
- 
+    lspservers: java,cdx
+    DiToken: 5c2b4300-5603-4b72-a943-6e14131a2864

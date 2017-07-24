@@ -1,10 +1,14 @@
 package com.sap.lsp.cf.ws;
 
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import javax.json.*;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.MultipartConfig;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.Part;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
@@ -17,20 +21,6 @@ import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-import javax.json.Json;
-import javax.json.JsonArrayBuilder;
-import javax.json.JsonObject;
-import javax.json.JsonReader;
-import javax.json.JsonString;
-import javax.json.JsonValue;
-import javax.servlet.ServletException;
-import javax.servlet.annotation.MultipartConfig;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.Part;
-
 /**
  * Servlet implementation class WSSynchronization
  */
@@ -40,7 +30,7 @@ maxFileSize=1024*1024*10,		// 10MB
 maxRequestSize=1024*1024*50)	// 50MB
 public class WSSynchronization extends HttpServlet {
 	private static final long serialVersionUID = 1L;
-	private static final String SAVE_DIR = System.getenv("HOME") + "/di_ws_root"; 
+	private static final String SAVE_DIR = System.getenv("HOME") != null ? System.getenv("HOME") + "/di_ws_root" : System.getenv("HOMEPATH") + "/di_ws_root";
 	private static final Logger LOG = Logger.getLogger(WSSynchronization.class.getName());
 	private static final String FS_STORAGE = "fs-storage";
 	private static final String FS_TAGS = "tags";
@@ -113,7 +103,6 @@ public class WSSynchronization extends HttpServlet {
 	 * @see HttpServlet#doPut(HttpServletRequest request, HttpServletResponse response)
 	 */
 	protected void doPut(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-
 		String artifactRelPath = "";
 		boolean bInitSync = false;
 		File destination = null;
@@ -150,7 +139,7 @@ public class WSSynchronization extends HttpServlet {
 
 		if (extracted != null) {
 			if ( wsLSP.isClosed() ) {
-				wsLSP.connect("ws://localhost:8080/LanguageServer?local");
+				wsLSP.connect("ws://localhost:8080/LanguageServer/ws/java?local");
 			}
 			String msg = buildLSPNotification(CHANGE_CREATED, extracted);
 			wsLSP.sendNotification(msg);
@@ -174,7 +163,7 @@ public class WSSynchronization extends HttpServlet {
 				 extracted = extract(zipinputstream, destination, "/" + artifactRelPath);
 			}
 			if ( wsLSP.isClosed() ) {
-				wsLSP.connect("ws://localhost:8080/LanguageServer?local");
+				wsLSP.connect("ws://localhost:8080/LanguageServer/ws/java?local");
 			}
 			String msg = buildLSPNotification(CHANGE_CHANGED, extracted);
 			wsLSP.sendNotification(msg);
@@ -202,7 +191,7 @@ public class WSSynchronization extends HttpServlet {
 			response.setContentType("application/json");
 			response.getWriter().append(String.format("{ \"deleted\": \"%s\"}", artifactRelPath));
 			if ( wsLSP.isClosed() ) {
-				wsLSP.connect("ws://localhost:8080/LanguageServer?local");
+				wsLSP.connect("ws://localhost:8080/LanguageServer/ws/java?local");
 			}
 			deleted.add(artifactPath);
 			String msg = buildLSPNotification(CHANGE_DELETED, deleted);

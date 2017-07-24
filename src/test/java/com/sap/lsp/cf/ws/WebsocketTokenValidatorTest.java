@@ -10,7 +10,6 @@ import org.junit.Test;
 
 public class WebsocketTokenValidatorTest {
 
-	public static WebsocketToken websocketToken = new WebsocketToken();
 
 	@Test
 	public void testUpdateTokenInfo() throws Exception {
@@ -21,7 +20,7 @@ public class WebsocketTokenValidatorTest {
 		SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
 		Date validDate = sdf.parse("07/07/2018");
 		String token = "WebsocketTokenValidatorTestToken";
-		websocketToken.update(token, validDate);
+		websocketTokenValidator.update(token, validDate);
 
 		// test valid inputs
 		boolean isValid = websocketTokenValidator.validateToken(token);
@@ -34,7 +33,7 @@ public class WebsocketTokenValidatorTest {
 
 		// test invalid values- token and date
 		Date invalidDate = sdf.parse("07/07/2017");
-		websocketToken.update(token, invalidDate);
+		websocketTokenValidator.update(token, invalidDate);
 		isValid = websocketTokenValidator.validateToken(invalidToken);
 		assertFalse(isValid);
 

@@ -28,7 +28,7 @@ Responsible for:
   mvn install
   
 ## Run LSPServerCF locally
-  mvn jetty:run
+  mvn jetty:run -Pintegration-test
 
 # CI
 This project is using [SAP Travis CI](https://travis-ci.mo.sap.corp/DevX/LSPServerCF).
