@@ -24,6 +24,7 @@ import javax.websocket.Session;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Matchers;
@@ -48,6 +49,7 @@ import org.mockito.stubbing.Answer;
 
 
 
+@Ignore
 public class LanguageServerWSEndPointTest {
 	
 	private static final Logger LOG = Logger.getLogger(LanguageServerWSEndPointTest.class.getName());
