@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.sap.lsp</groupId>
 	<artifactId>LSPServerCF</artifactId>
-	<version>1.0.4-SNAPSHOT</version>
+	<version>1.0.4</version>
 	<packaging>war</packaging>
 	<name>LSPServerEndPoint</name>
 	<description>LSP Server Endpoint for Isolated Cloud Container</description>
