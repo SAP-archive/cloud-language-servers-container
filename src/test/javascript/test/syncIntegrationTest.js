@@ -1,130 +1,120 @@
-// import * as fs from "tns-core-modules/file-system";
+"use strict";
 
 const assert = require("chai").assert;
 const fs = require('fs');
 const request = require('request');
 const path = require('path');
 const pathPrefix = "http://localhost:8080/WSSynchronization";
-var folderPath = "";
-var filePath = "";
+
+const COMMON_OPTIONS = {
+	headers: {
+		"Content-Type": "multipart/form-data"
+	}
+};
 
 describe('Sync Integration Test', function () {
+
+	let folderPath = "";
+	let filePath = "";
 
     after(function () {
         try {
             fs.rmdirSync(folderPath + "/java");
             fs.rmdirSync(folderPath);
-            console.log("Root folder deleted");
         } catch (e) {
-            console.error("Error deleting root folder");
+            console.error("Error while deleting root folder");
         }
     });
+
+    function deleteSingleFile() {
+		return new Promise(function (resolve, reject) {
+			request.delete(pathPrefix + '/java/test.java', COMMON_OPTIONS, function (err, res, body) {
+				onDeleteResponse(err, res, body, resolve, reject);
+			});
+		});
+	}
 
 
     function onPutResponse(err, res, body, resolve, reject, isInit) {
-        if (res) {
-            if (isInit){
-                folderPath = body.substring(7);
-                filePath = path.join(path.normalize(folderPath + "/java/test.java"));
-            }
-            if (res.statusCode === 201 && fs.existsSync(filePath)) {
-                assert("Put request succeeded");
-            } else {
-                assert.fail("Error creating file");
-            }
-            resolve(res);
+		assert.ok(!err);
+		assert.ok(res);
+        if (isInit){
+            folderPath = body.substring(7);
+            filePath = path.join(path.normalize(folderPath + "/java/test.java"));
         }
-        if (err) {
-            assert.fail();
-            reject(err);
-        }
+        assert.equal(res.statusCode, 201);
+        assert.ok(fs.existsSync(filePath));
+        resolve(res);
     }
 
     function onPostResponse(err, res, body, resolve, reject) {
-        if (res) {
-            if (res.statusCode === 200 && fs.existsSync(filePath)) {
-                if (fs.readFileSync(filePath).toString() == "test") {
-                    assert("Post request succeeded");
-                } else {
-                    assert.fail("Post request failed");
-                }
-            } else {
-                assert.fail("Error " + request);
-            }
-            resolve(res);
-        }
-        if (err) {
-            assert.fail();
-            reject(err);
-        }
+		assert.ok(!err);
+        assert.ok(res);
+        assert.equal(res.statusCode, 200);
+        assert.ok(fs.existsSync(filePath));
+        let newFileContent = fs.readFileSync(filePath).toString();
+        assert.equal(newFileContent, "test", "Update file content check");
+        resolve(res);
     }
 
     function onDeleteResponse(err, res, body, resolve, reject) {
-        if (res) {
-            if (res.statusCode === 200 && !fs.existsSync(filePath)) {
-                assert("Delete request succeeded");
-            } else {
-                assert.fail("Error deleting file");
-            }
-            resolve(res);
-        }
-        if (err) {
-            assert.fail(err);
-            reject(err);
-        }
+		assert.ok(!err);
+		assert.ok(res);
+        assert.equal(res.statusCode, 200);
+        assert.ok(!fs.existsSync(filePath));
+        resolve(res);
     }
 
-    it('Check create and delete file', function () {
-        var zipFilePath = path.resolve(__dirname, '../resources/putTest.zip');
-        var options = {
-            headers: {
-                "Content-Type": "multipart/form-data"
-            }
-        };
+    it('Initial sync and delete file', function () {
+        let zipFilePath = path.resolve(__dirname, '../resources/putTest.zip');
         return new Promise(function (resolve, reject) {
-            var req = request.put(pathPrefix, options, function (err, res, body) {
+            let req = request.put(pathPrefix, COMMON_OPTIONS, function (err, res, body) {
                 onPutResponse(err, res, body, resolve, reject, true);
             });
-            var form = req.form();
+            let form = req.form();
             form.append('file', fs.createReadStream(zipFilePath));
-
-        }).then(function () {
-            return new Promise(function (resolve, reject) {
-                request.delete(pathPrefix + '/java/test.java', options, function (err, res, body) {
-                    onDeleteResponse(err, res, body, resolve, reject);
-                });
-            });
-        });
+		}).then(function () {
+			// putting file that already exists should fail
+			return new Promise(function (resolve, reject) {
+				let req = request.put(pathPrefix + '/java/test.java', COMMON_OPTIONS, function (err, res, body) {
+					assert.equal(res.statusCode, 403);
+					resolve(res);
+				});
+				let form = req.form();
+				form.append('file', fs.createReadStream(zipFilePath));
+			});
+		}).then(deleteSingleFile);
     });
 
-    it('Check create update and delete file', function () {
-        var zipPutFilePath = path.resolve(__dirname, '../resources/putTest.zip');
-        var zipPostFilePath = path.resolve(__dirname, '../resources/postTest.zip');
-        var options = {
-            headers: {
-                "Content-Type": "multipart/form-data"
-            }
-        };
-        return new Promise(function (resolve, reject) {
-            var req = request.put(pathPrefix + '/java/test.java', options, function (err, res, body) {
-                onPutResponse(err, res, body, resolve, reject, false);
-            });
-            var putForm = req.form();
-            putForm.append('file', fs.createReadStream(zipPutFilePath));
-        }).then(function () {
-            return new Promise(function (resolve, reject) {
-                var req = request.post(pathPrefix + '/java/test.java', options, function (err, res, body) {
-                    onPostResponse(err, res, body, resolve, reject);
-                });
-                var postForm = req.form();
-                postForm.append('file', fs.createReadStream(zipPostFilePath));
-            }).then(function () {
-                return new Promise(function (resolve, reject) {
-                    request.delete(pathPrefix + '/java/test.java', options, function (err, res, body) {
-                        onDeleteResponse(err, res, body, resolve, reject);
-                    });
-                });
-            });
-        });
+    it('Update file that does not exist should fail', () => {
+		let zipPostFilePath = path.resolve(__dirname, '../resources/postTest.zip');
+		return new Promise(function (resolve, reject) {
+			let req = request.post(pathPrefix + '/java/test.java', COMMON_OPTIONS, function (err, res, body) {
+				assert.equal(res.statusCode, 500);
+				resolve(res);
+			});
+			let postForm = req.form();
+			postForm.append('file', fs.createReadStream(zipPostFilePath));
+		});
+	});
+
+	it('Create update and delete file', function () {
+		let zipPutFilePath = path.resolve(__dirname, '../resources/putTest.zip');
+		let zipPostFilePath = path.resolve(__dirname, '../resources/postTest.zip');
+		return new Promise(function (resolve, reject) {
+			let req = request.put(pathPrefix + '/java/test.java', COMMON_OPTIONS, function (err, res, body) {
+				onPutResponse(err, res, body, resolve, reject, false);
+			});
+			let putForm = req.form();
+			putForm.append('file', fs.createReadStream(zipPutFilePath));
+		}).then(function () {
+			return new Promise(function (resolve, reject) {
+				let req = request.post(pathPrefix + '/java/test.java', COMMON_OPTIONS, function (err, res, body) {
+					onPostResponse(err, res, body, resolve, reject);
+				});
+				let postForm = req.form();
+				postForm.append('file', fs.createReadStream(zipPostFilePath));
+			});
+		}).then(deleteSingleFile);
     });
 });

@@ -99,50 +99,51 @@ public class WSSynchronization extends HttpServlet {
 		append(" for curl -i -X PUT -H \"Content-Type: multipart/form-data\" -F \"file=@<YourZipFile>\"  https://<application>/WSSynchronization/projectxxx");
 	}
 
+	private void initialSync(HttpServletRequest request, HttpServletResponse response, String workspaceRoot, String workspaceSaveDir) throws IOException, ServletException {
+		for (Part part : request.getParts()) {
+			syncWorkspace(part.getInputStream(), new File(workspaceSaveDir));
+		}
+		response.getWriter().append(workspaceRoot);
+		response.setStatus(HttpServletResponse.SC_CREATED);
+	}
+
 	/**
 	 * @see HttpServlet#doPut(HttpServletRequest request, HttpServletResponse response)
 	 */
 	protected void doPut(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		String artifactRelPath = "";
-		boolean bInitSync = false;
-		File destination = null;
-		List<String> extracted = null;
-		String workspaceRoot = "";
-		
 		String servletPath = request.getServletPath();
 		String requestURI = request.getRequestURI();
-		String workspaceSaveDir = wsSaveDir != null ? wsSaveDir + "/" : SAVE_DIR;
 		if (servletPath.equals(requestURI))  {
-			bInitSync = true;
-			workspaceRoot = "file://" + workspaceSaveDir;
+			String workspaceSaveDir = wsSaveDir != null ? wsSaveDir + "/" : SAVE_DIR;
+			initialSync(request, response, "file://" + workspaceSaveDir, workspaceSaveDir);
 		} else if (requestURI.length() > servletPath.length() )  {
-			artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1 );
-			destination = new File(this.saveDir + artifactRelPath);
-			if ( destination.exists()) {
-				response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-				return;
-			}			
+			addNewFiles(request, response);
 		}
 		
+	}
+
+	private void addNewFiles(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
+		String artifactRelPath;
+		File destination;List<String> extracted = new ArrayList<>();
+		artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1 );
+		destination = new File(this.saveDir + artifactRelPath);
+		if (!destination.createNewFile()) {
+			response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+			return;
+		}
 		for (Part part : request.getParts()) {
-			if (bInitSync) {
-				syncWorkspace(part.getInputStream(), new File(workspaceSaveDir));
-			} else {
-				extracted = extract(new ZipInputStream(part.getInputStream()), destination, artifactRelPath);
-			}
+			extracted.addAll(extract(part.getInputStream(), destination, artifactRelPath));
 		}
 
-		response.setStatus(HttpServletResponse.SC_CREATED);
-		if (bInitSync) {
-			response.getWriter().append(workspaceRoot);
-		}
-
-		if (extracted != null) {
+		if (extracted.size() > 0) {
+			response.setStatus(HttpServletResponse.SC_CREATED);
 			if ( wsLSP.isClosed() ) {
 				wsLSP.connect("ws://localhost:8080/LanguageServer/ws/java?local");
 			}
 			String msg = buildLSPNotification(CHANGE_CREATED, extracted);
 			wsLSP.sendNotification(msg);
+		} else {
+			response.setStatus(HttpServletResponse.SC_CONFLICT);
 		}
 	}
 
@@ -152,25 +153,26 @@ public class WSSynchronization extends HttpServlet {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		String artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1);
 		String artifactPath = this.saveDir + artifactRelPath;
-		List<String> extracted = null;
+		List<String> extracted = new ArrayList<>();
 
 		File destination = new File(artifactPath);
 		for (Part part : request.getParts()) {
-			ZipInputStream zipinputstream = new ZipInputStream(part.getInputStream());
-			if ( destination.exists() && destination.isDirectory()) {
-				//moduleRoot = "file://" + syncProject(part.getInputStream(), destination);
-			} else if (destination.exists()) {
-				 extracted = extract(zipinputstream, destination, artifactRelPath);
+			if (destination.exists() && !destination.isDirectory()) {
+				extracted.addAll(extract(part.getInputStream(), destination, artifactRelPath));
 			}
+		}
+		if (extracted.size() > 0) {
 			if ( wsLSP.isClosed() ) {
 				wsLSP.connect("ws://localhost:8080/LanguageServer/ws/java?local");
 			}
 			String msg = buildLSPNotification(CHANGE_CHANGED, extracted);
 			wsLSP.sendNotification(msg);
+			response.setContentType("application/json");
+			response.getWriter().append(String.format("{ \"updated\": \"%s\"}", artifactRelPath));
+			response.setStatus(HttpServletResponse.SC_OK);
+		} else {
+			response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
 		}
-		response.setContentType("application/json");
-		response.getWriter().append(String.format("{ \"updated\": \"%s\"}", artifactRelPath));
-
 	}
 
 
@@ -201,14 +203,16 @@ public class WSSynchronization extends HttpServlet {
 
 /* ---------------------- Private methods ------------------------------------	*/
 
-	private String syncWorkspace(InputStream workspaceZipStream, File destination) {
+	private void syncWorkspace(InputStream workspaceZipStream, File destination) {
 		if ( destination.exists()) {
 			Path rootPath = Paths.get(destination.getPath());
 			try {
 				Files.walk(rootPath, FileVisitOption.FOLLOW_LINKS)
 				    .sorted(Comparator.reverseOrder())
 				    .map(Path::toFile)
-				    .forEach(File::delete);
+				    .map(File::delete)
+				    .reduce((a, b) -> a && b)
+				    .ifPresent(isSuccess -> LOG.warning( "Some delete operation failed"));
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				LOG.warning( e.toString());
@@ -220,100 +224,83 @@ public class WSSynchronization extends HttpServlet {
 		}
 
 		LOG.info("Unzip workspace to " + destination.getAbsolutePath());
-		ZipInputStream zipinputstream = new ZipInputStream(workspaceZipStream);
-		return unpack(zipinputstream, destination, false);
+		unpack(workspaceZipStream, destination);
 	}
 
-	private String unpack(ZipInputStream zipinputstream, File destination, boolean update) {
-		String projectRoot = "";
+	private void unpack(InputStream workspaceZipStream, File destination) {
         byte[] buf = new byte[1024];
         ZipEntry zipentry;
 
-        try {
+        try (ZipInputStream zipinputstream = new ZipInputStream(workspaceZipStream)) {
 			zipentry = zipinputstream.getNextEntry();
-		        while (zipentry != null) {
-		            int n;
-		            File newFile = new File(destination, zipentry.getName());
-		            LOG.info("UNZIP Creating " + newFile.getAbsolutePath());
+			while (zipentry != null) {
+				int n;
+				File newFile = new File(destination, zipentry.getName());
+				LOG.info("UNZIP Creating " + newFile.getAbsolutePath());
 
-		            if (zipentry.isDirectory()) {
-		            	if ( newFile.exists()) {
-			                zipentry = zipinputstream.getNextEntry();
-			                continue;
-		            	}
-
-		                if( !newFile.mkdirs() ) {
-		                	LOG.warning("Directory creation error");
-		                	throw new IOException("Directory creation error");
-		                } else {
-			                zipentry = zipinputstream.getNextEntry();
-			                continue;
-		                }
-		            } else {
-		            	if ( newFile.exists() && !update ) {
-		                	LOG.warning("File creation error");
-		                	throw new IOException("File creation error");
-		            	}
-		            	if ( newFile.getName().equals("pom.xml") )
-		            		projectRoot = newFile.getParent();
-		            }
-
-		            try (FileOutputStream fileoutputstream = new FileOutputStream(newFile)) {
-						while ((n = zipinputstream.read(buf, 0, 1024)) > -1) {
-							fileoutputstream.write(buf, 0, n);
-						}
+				if (zipentry.isDirectory()) {
+					if ( newFile.exists()) {
+						zipentry = zipinputstream.getNextEntry();
+						continue;
 					}
 
-		            zipinputstream.closeEntry();
-		            if ( !newFile.exists()) LOG.warning("File creation error");
-		            zipentry = zipinputstream.getNextEntry();
+					if( !newFile.mkdirs() ) {
+						LOG.warning("Directory creation error");
+						throw new IOException("Directory creation error");
+					} else {
+						zipentry = zipinputstream.getNextEntry();
+						continue;
+					}
+				} else {
+					if ( newFile.exists()) {
+						LOG.warning("File creation error");
+					}
+				}
 
-		        }
+				try (FileOutputStream fileoutputstream = new FileOutputStream(newFile)) {
+					while ((n = zipinputstream.read(buf, 0, 1024)) > -1) {
+						fileoutputstream.write(buf, 0, n);
+					}
+				}
 
-
-		    zipinputstream.close();
+				zipinputstream.closeEntry();
+				if ( !newFile.exists()) LOG.warning("File creation error");
+				zipentry = zipinputstream.getNextEntry();
+			}
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 			LOG.warning("UNZIP error: " + e.toString());
 		}
 
-        return projectRoot;
-
 	}
 
-	private List<String> extract(ZipInputStream zipinputstream, File destination, String zipPath) {
+	private List<String> extract(InputStream inputstream, File destination, String zipPath) {
         byte[] buf = new byte[1024];
         ZipEntry zipentry;
-        List<String> extracted = new ArrayList<String>();
+        List<String> extracted = new ArrayList<>();
 
-        try {
+        try (ZipInputStream zipinputstream = new ZipInputStream(inputstream)) {
 			zipentry = zipinputstream.getNextEntry();
-		        while (zipentry != null) {
-		            int n;
-		            if ( !zipentry.getName().equals(zipPath)) {
-		            	zipentry = zipinputstream.getNextEntry();
-		            	continue;
-		            }
-		            
-		            File newFile = destination;
-		            LOG.info("UNZIP Updating " + newFile.getAbsolutePath());
-		            
-		            try (FileOutputStream fileoutputstream = new FileOutputStream(newFile)){
-						while ((n = zipinputstream.read(buf, 0, 1024)) > -1) {
-							fileoutputstream.write(buf, 0, n);
-						}
+			while (zipentry != null) {
+				if ( !zipentry.getName().equals(zipPath)) {
+					zipentry = zipinputstream.getNextEntry();
+					continue;
+				}
+
+				LOG.info("UNZIP Updating " + destination.getAbsolutePath());
+
+				try (FileOutputStream fileoutputstream = new FileOutputStream(destination)){
+					int n;
+					while ((n = zipinputstream.read(buf, 0, 1024)) > -1) {
+						fileoutputstream.write(buf, 0, n);
 					}
-		            zipinputstream.closeEntry();
-		            if ( !newFile.exists()) LOG.warning("File creation error");
-		            extracted.add(newFile.getPath());
-		            break;
-		            
-		
-		        }
-			
-		
-		    zipinputstream.close();	
+				}
+				zipinputstream.closeEntry();
+				if ( !destination.exists()) LOG.warning("File creation error");
+				extracted.add(destination.getPath());
+				break;
+			}
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -324,12 +311,10 @@ public class WSSynchronization extends HttpServlet {
 	}
 	
 	private String buildLSPNotification(int type, List<String> artifacts) {
-		
 		JsonArrayBuilder changes = Json.createArrayBuilder();
 		for (String sUrl: artifacts) {
 			changes.add(Json.createObjectBuilder().add("uri", "file://" + sUrl).add("type", type).build());
 		}
-
 		JsonObject bodyObj = Json.createObjectBuilder()
 				.add("jsonrpc", "2.0")
 				.add("method", "workspace/didChangeWatchedFiles")
@@ -338,8 +323,7 @@ public class WSSynchronization extends HttpServlet {
 						.build())
 				.build();
 		String body = bodyObj.toString();
-		String msg = String.format("Content-Length: %d\r\n\r\n%s", body.length(), body);
-		return msg;
+		return String.format("Content-Length: %d\r\n\r\n%s", body.length(), body);
 	}
 
 
