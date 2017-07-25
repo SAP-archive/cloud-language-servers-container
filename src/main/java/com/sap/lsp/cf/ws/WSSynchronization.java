@@ -26,8 +26,8 @@ import java.util.zip.ZipInputStream;
  */
 @WebServlet(description = "Work Space Synchronization server", urlPatterns = { "/WSSynchronization/*" })
 @MultipartConfig(fileSizeThreshold=1024*1024*2,	// 2MB
-maxFileSize=1024*1024*10,		// 10MB
-maxRequestSize=1024*1024*50)	// 50MB
+maxFileSize=1024*1024*256,		// 256MB
+maxRequestSize=1024*1024*256)	// 256MB
 public class WSSynchronization extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private static final String SAVE_DIR = System.getenv("HOME") != null ? System.getenv("HOME") + "/di_ws_root" : System.getenv("HOMEPATH") + "/di_ws_root";
@@ -128,10 +128,10 @@ public class WSSynchronization extends HttpServlet {
 			if (bInitSync) {
 				syncWorkspace(part.getInputStream(), new File(workspaceSaveDir));
 			} else {
-				extracted = extract(new ZipInputStream(part.getInputStream()), destination, "/" + artifactRelPath);
+				extracted = extract(new ZipInputStream(part.getInputStream()), destination, artifactRelPath);
 			}
 		}
-		
+
 		response.setStatus(HttpServletResponse.SC_CREATED);
 		if (bInitSync) {
 			response.getWriter().append(workspaceRoot);
@@ -145,7 +145,7 @@ public class WSSynchronization extends HttpServlet {
 			wsLSP.sendNotification(msg);
 		}
 	}
-	
+
 	/**
 	 * @see HttpServlet#doPut(HttpServletRequest request, HttpServletResponse response)
 	 */
@@ -153,14 +153,14 @@ public class WSSynchronization extends HttpServlet {
 		String artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1);
 		String artifactPath = this.saveDir + artifactRelPath;
 		List<String> extracted = null;
-		
+
 		File destination = new File(artifactPath);
 		for (Part part : request.getParts()) {
 			ZipInputStream zipinputstream = new ZipInputStream(part.getInputStream());
 			if ( destination.exists() && destination.isDirectory()) {
 				//moduleRoot = "file://" + syncProject(part.getInputStream(), destination);
 			} else if (destination.exists()) {
-				 extracted = extract(zipinputstream, destination, "/" + artifactRelPath);
+				 extracted = extract(zipinputstream, destination, artifactRelPath);
 			}
 			if ( wsLSP.isClosed() ) {
 				wsLSP.connect("ws://localhost:8080/LanguageServer/ws/java?local");
@@ -176,7 +176,7 @@ public class WSSynchronization extends HttpServlet {
 
 	/**
 	 * @see HttpServlet#doPut(HttpServletRequest request, HttpServletResponse response)
-	 */	
+	 */
 	protected void doDelete(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		String artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1);
 		String artifactPath = this.saveDir + artifactRelPath;
@@ -198,9 +198,9 @@ public class WSSynchronization extends HttpServlet {
 			wsLSP.sendNotification(msg);
 		}
 	}
-	
+
 /* ---------------------- Private methods ------------------------------------	*/
-	
+
 	private String syncWorkspace(InputStream workspaceZipStream, File destination) {
 		if ( destination.exists()) {
 			Path rootPath = Paths.get(destination.getPath());
@@ -212,13 +212,13 @@ public class WSSynchronization extends HttpServlet {
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				LOG.warning( e.toString());
-			}			
+			}
 		}
 		if ( !destination.exists() ) { if (!destination.mkdirs()) {
 			LOG.severe("Can't create workspace path " + destination.getAbsolutePath());
 			}
 		}
-		
+
 		LOG.info("Unzip workspace to " + destination.getAbsolutePath());
 		ZipInputStream zipinputstream = new ZipInputStream(workspaceZipStream);
 		return unpack(zipinputstream, destination, false);
@@ -228,20 +228,20 @@ public class WSSynchronization extends HttpServlet {
 		String projectRoot = "";
         byte[] buf = new byte[1024];
         ZipEntry zipentry;
-        
+
         try {
 			zipentry = zipinputstream.getNextEntry();
 		        while (zipentry != null) {
 		            int n;
 		            File newFile = new File(destination, zipentry.getName());
 		            LOG.info("UNZIP Creating " + newFile.getAbsolutePath());
-		            
+
 		            if (zipentry.isDirectory()) {
 		            	if ( newFile.exists()) {
 			                zipentry = zipinputstream.getNextEntry();
 			                continue;
 		            	}
-		            	
+
 		                if( !newFile.mkdirs() ) {
 		                	LOG.warning("Directory creation error");
 		                	throw new IOException("Directory creation error");
@@ -252,41 +252,41 @@ public class WSSynchronization extends HttpServlet {
 		            } else {
 		            	if ( newFile.exists() && !update ) {
 		                	LOG.warning("File creation error");
-		                	throw new IOException("File creation error");		            		
+		                	throw new IOException("File creation error");
 		            	}
 		            	if ( newFile.getName().equals("pom.xml") )
-		            		projectRoot = newFile.getParent();	
+		            		projectRoot = newFile.getParent();
 		            }
-		
+
 		            try (FileOutputStream fileoutputstream = new FileOutputStream(newFile)) {
 						while ((n = zipinputstream.read(buf, 0, 1024)) > -1) {
 							fileoutputstream.write(buf, 0, n);
 						}
 					}
-		
+
 		            zipinputstream.closeEntry();
 		            if ( !newFile.exists()) LOG.warning("File creation error");
 		            zipentry = zipinputstream.getNextEntry();
-		
+
 		        }
-			
-		
-		    zipinputstream.close();	
+
+
+		    zipinputstream.close();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 			LOG.warning("UNZIP error: " + e.toString());
 		}
-        
+
         return projectRoot;
 
 	}
-	
+
 	private List<String> extract(ZipInputStream zipinputstream, File destination, String zipPath) {
         byte[] buf = new byte[1024];
         ZipEntry zipentry;
         List<String> extracted = new ArrayList<String>();
-        
+
         try {
 			zipentry = zipinputstream.getNextEntry();
 		        while (zipentry != null) {
