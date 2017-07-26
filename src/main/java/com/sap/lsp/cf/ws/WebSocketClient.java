@@ -6,7 +6,7 @@ import java.net.URI;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
 
-@ClientEndpoint
+@ClientEndpoint(subprotocols="local_access")
 public class WebSocketClient {
 
     private Session userSession = null;

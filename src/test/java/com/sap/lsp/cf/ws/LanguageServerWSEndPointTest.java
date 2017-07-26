@@ -10,6 +10,7 @@ import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -18,6 +19,7 @@ import java.util.logging.Logger;
 
 import javax.websocket.CloseReason;
 import javax.websocket.CloseReason.CloseCode;
+import javax.websocket.server.HandshakeRequest;
 import javax.websocket.EndpointConfig;
 import javax.websocket.RemoteEndpoint;
 import javax.websocket.Session;
@@ -49,7 +51,6 @@ import org.mockito.stubbing.Answer;
 
 
 
-@Ignore
 public class LanguageServerWSEndPointTest {
 	
 	private static final Logger LOG = Logger.getLogger(LanguageServerWSEndPointTest.class.getName());
@@ -100,6 +101,7 @@ public class LanguageServerWSEndPointTest {
 		testSession = Mockito.mock(Session.class);
 		Mockito.when(testSession.getRequestParameterMap()).thenReturn(reqParam);
 		Mockito.when(testSession.getId()).thenReturn("0");
+		Mockito.when(testSession.getNegotiatedSubprotocol()).thenReturn("access_token");
 		
 		remoteEndpointMock = Mockito.mock(RemoteEndpoint.Basic.class);
 		
@@ -115,11 +117,20 @@ public class LanguageServerWSEndPointTest {
 		Mockito.when(testSession.getBasicRemote()).thenReturn(remoteEndpointMock);
 		
 		endpointConfig = Mockito.mock(EndpointConfig.class);
+		Map<String,Object> reqProtocolMap = Collections.singletonMap(HandshakeRequest.SEC_WEBSOCKET_PROTOCOL, Collections.singletonList("access_token,12345"));
+		Mockito.when(endpointConfig.getUserProperties()).thenReturn(reqProtocolMap);
 		
 		procManagerMock = Mockito.mock(LSPProcessManager.class);
 		lspProcessMock = Mockito.mock(LSPProcess.class);
 		doReturn(lspProcessMock).when(procManagerMock).createProcess(any(), any(), any());
 		doReturn(lspProcessMock).when(procManagerMock).getProcess(any());
+		
+//		PowerMockito.mockStatic(System.class);
+//		PowerMockito.when(System.getProperty("com.sap.lsp.cf.ws.token")).thenReturn(Long.toString(System.currentTimeMillis() + 60 * 60 * 1000));
+//		PowerMockito.when(System.getProperty("com.sap.lsp.cf.ws.expiratioDate")).thenReturn("abc");
+		
+		System.setProperty("com.sap.lsp.cf.ws.token","12345");
+		System.setProperty("com.sap.lsp.cf.ws.expirationDate",Long.toString(System.currentTimeMillis() + 60 * 60 * 1000));
 		
 		// Mock lspProc.enqueueCall(message)
 		Mockito.doAnswer(new Answer<Void>() {

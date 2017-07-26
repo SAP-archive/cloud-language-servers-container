@@ -8,6 +8,7 @@
     "promise": "7.1.1",
     "promise-timeout": "1.1.1",
     "request": "2.81.0",
+    "request-promise": "4.2.1",
     "ws": "3.0.0"
   },
   "dependencies": {

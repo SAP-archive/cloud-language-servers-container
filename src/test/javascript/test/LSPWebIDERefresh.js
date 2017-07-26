@@ -3,11 +3,13 @@ const Promise = require('promise');
 const PromiseTimeout = require('promise-timeout');
 const assert = require("chai").assert;
 const expect = require("chai").expect;
+const request = require('request');
+const rp = require('request-promise');
 
 
 var aSubscribers = [];
 
-describe('Protocol test (LSP is socket client)', () => {
+describe('WebIDE reload test', () => {
 
 	function onMessage(msg) {
 		console.log("Receiving message: " + msg);
@@ -31,20 +33,34 @@ describe('Protocol test (LSP is socket client)', () => {
 	}
 	
 	function openAndClose() {
-		debugger;
 		var ws_o = null;
-		return PromiseTimeout.timeout(new Promise(function(resolve, reject){
-			openPromise = new Promise(function(openRes,openRej){
-				aSubscribers.push({ method: "protocol/Ready", callback: function(msg){
-					openRes(true);
-				}})
-			});
-			ws_o = new WebSocket('ws://localhost:8080/LanguageServer/ws/java');
-			ws_o.on('open',function open(){
-				ws = ws_o;
-				ws.on('message',onMessage);
-				resolve(ws);
-			})
+		var d = new Date();
+		var milliSec = d.getTime() + 60 * 60 * 1000;
+	    var tokenSync = {
+		    method: "POST",
+		    uri: "http://localhost:8080/UpdateToken/?expiration=" + milliSec + "&token=12345",
+		    body: {},
+		    json: true
+	    };
+	    return PromiseTimeout.timeout(new Promise(function(resolve, reject){
+	        openPromise = new Promise(function(openRes,openRej){
+	            aSubscribers.push({ method: "protocol/Ready", callback: function(msg){
+	            	console.log("Test - Ready received!");
+	                openRes(true);
+	            }})
+	        });
+		    rp(tokenSync).then(function(parsedResp) {
+		    	console.log("Open WS after Sec Token sent");
+	            var subprotocol = ["access_token", "12345"];
+	            var ws_o = new WebSocket('ws://localhost:8080/LanguageServer/ws/java', subprotocol);
+	            ws_o.on('open',function open(){
+	                ws = ws_o;
+	                ws.on('message',onMessage);
+	                resolve(ws);
+	            })
+		    }).catch(function(err){
+			    reject(err);
+		    });
 		}),1000).then(function(ws) {
 			return new Promise(function(closeRes,closeRej) {
 				ws.close();

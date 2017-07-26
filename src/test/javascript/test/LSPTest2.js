@@ -3,6 +3,8 @@ const Promise = require('promise');
 const PromiseTimeout = require('promise-timeout');
 const assert = require("chai").assert;
 const expect = require("chai").expect;
+const request = require('request');
+const rp = require('request-promise');
 
 var ws;
 var openPromise;
@@ -31,23 +33,39 @@ describe('Protocol test (LSP is socket server)', () => {
 
 		}
 	}
-
+	
 	before(function(){
-		debugger;
 		ws = null;
-		return PromiseTimeout.timeout(new Promise(function(resolve, reject){
-			openPromise = new Promise(function(openRes,openRej){
-				aSubscribers.push({ method: "protocol/Ready", callback: function(msg){
-					openRes(true);
-				}})
-			});
-			var ws_o = new WebSocket('ws://localhost:8080/LanguageServer/ws/cdx');
-			ws_o.on('open',function open(){
-				ws = ws_o;
-				ws.on('message',onMessage);
-				resolve();
-			})
-		}),1000);
+	    console.log("BEFORE - Protocol test (LSP is socket server)");
+		var d = new Date();
+		var milliSec = d.getTime() + 60 * 60 * 1000;
+	    var tokenSync = {
+		    method: "POST",
+		    uri: "http://localhost:8080/UpdateToken/?expiration=" + milliSec + "&token=12345",
+		    body: {},
+		    json: true
+	    };
+	    return PromiseTimeout.timeout(new Promise(function(resolve, reject){
+	        openPromise = new Promise(function(openRes,openRej){
+	            aSubscribers.push({ method: "protocol/Ready", callback: function(msg){
+	            	console.log("Test - Ready received!");
+	                openRes(true);
+	            }})
+	        });
+		    rp(tokenSync).then(function(parsedResp) {
+		    	console.log("Open WS after Sec Token sent");
+	            var subprotocol = ["access_token", "12345"];
+	            var ws_o = new WebSocket('ws://localhost:8080/LanguageServer/ws/java', subprotocol);
+	            ws_o.on('open',function open(){
+	                ws = ws_o;
+	                ws.on('message',onMessage);
+	                console.log("Test for ready.........");
+	                resolve();
+	            })
+		    }).catch(function(err){
+			    reject(err);
+		    });
+	    }),1000);
 	});
 
 	after(function(){
