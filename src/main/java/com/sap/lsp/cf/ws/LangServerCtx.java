@@ -4,7 +4,6 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
-import com.sap.lsp.cf.ws.LSPConfigurationException;
 
 public class LangServerCtx extends HashMap<String,String> {
 
@@ -48,7 +47,7 @@ public class LangServerCtx extends HashMap<String,String> {
 			throw new LSPConfigurationException();
 		} else {
 			this.launcherScript = BASE_DIR + get(ENV_LAUNCHER);
-			if ( !launcherScript.endsWith(".sh") || !(new File(launcherScript).exists()) ) {
+			if (!(new File(launcherScript).exists()) ) {
 				LOG.warning("No launcher script exists " + launcherScript);
 				throw new LSPConfigurationException();
 			}
@@ -62,20 +61,28 @@ public class LangServerCtx extends HashMap<String,String> {
 			}
 	        LOG.info("LSP Working dir is " + workdir);
 	        LOG.info("LSP Env HOME: " + System.getenv("HOME"));
-
 		}
 
+		ProcessBuilder pb;
+		String os = System.getProperty("os.name").toLowerCase();
+		if (os.contains("nix") || os.contains("nux") || os.contains("aix")) {    //Unix
+			pb = new ProcessBuilder("/bin/bash", launcherScript);
+		} else if (os.contains("win")) { //Windows
+			pb = new ProcessBuilder("cmd.exe", "/C " + launcherScript);
+		} else {
+			LOG.severe("OS not supported");
+			throw new LSPConfigurationException();
+		}
 
-		ProcessBuilder pb = new ProcessBuilder("/bin/bash",launcherScript);
 		pb.directory(wDir);
 		pb.redirectErrorStream(true);
 		
 		Map<String,String> env = pb.environment();
+		//TODO JAVA_HOME is relevant only to JDT. find a way to send it from build pack
 		env.put("JAVA_HOME", System.getProperty("java.home"));
 		LOG.info("JAVA_HOME " + System.getProperty("java.home"));
 		env.putAll(this);
 
-		
 		return pb;
 	}
 

@@ -62,6 +62,9 @@ describe('Protocol test (LSP is socket server)', () => {
 	                console.log("Test for ready.........");
 	                resolve();
 	            })
+                ws_o.on('close',function close() {
+                    ws = null;
+                });
 		    }).catch(function(err){
 			    reject(err);
 		    });
@@ -73,9 +76,6 @@ describe('Protocol test (LSP is socket server)', () => {
 		return PromiseTimeout.timeout(new Promise(function(resolve,reject){
 			if ( ws ) {
 				ws.close();
-				ws.on('close',function close() {
-					ws = null;
-				});
 			}
 			resolve();
 		}), 1000

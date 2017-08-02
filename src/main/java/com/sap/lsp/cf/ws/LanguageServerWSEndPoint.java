@@ -51,7 +51,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 
 	@OnOpen
 	public void onOpen(@PathParam("ws") String ws, @PathParam("lang") String lang, Session session, EndpointConfig endpointConfig) {
-        try {
+	    try {
             String subprotocol = session.getNegotiatedSubprotocol();
             if (subprotocol == null) {
                 LOG.severe("LSP: Subprotocol is required for authentication");
@@ -119,7 +119,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
             } catch (LSPException e) {
                 // TODO Auto-generated catch block
                 informReady(remoteEndpointBasic, false);
-                session.close(new CloseReason(null, "Fatal error"));
+                session.close(new CloseReason(CloseCodes.UNEXPECTED_CONDITION, "Fatal error"));
             }
         } catch (IOException ex) {
             LOG.severe("LSP open: FATAL exception");
@@ -139,18 +139,18 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 
 	@OnClose
 	public void onClose(@PathParam("ws") String ws, @PathParam("lang") String lang, Session session, CloseReason reason ) {
-		Map<String,List<String>> reqParam = session.getRequestParameterMap();
+	    Map<String,List<String>> reqParam = session.getRequestParameterMap();
 		if ( reqParam != null && reqParam.containsKey("local") ) {
 			return;
 		}
 		LOG.info("LSP: OnClose is invoked");
 		procManager.cleanProcess(ws, lang);
-
 	}
 
 	@OnError
 	public void onError(Session session, Throwable thr) {
-		LOG.severe("On Error: " + thr.getMessage() + "\n" + thr.toString());
+	    String message = thr.getMessage() != null ? thr.getMessage() : thr.toString();
+		LOG.severe("On Error: " + message);
 	}
 
 	@Override

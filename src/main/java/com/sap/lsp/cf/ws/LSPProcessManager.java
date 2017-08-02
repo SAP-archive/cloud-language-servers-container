@@ -188,7 +188,7 @@ public class LSPProcessManager {
 							logBuilder = new StringBuilder();
 						logBuilder.append((char) c);
 						if (c == '\n') {
-							LOG.info(">>LOG" + logBuilder.toString());
+							//LOG.info(">>LOG" + logBuilder.toString());
 							logBuilder = null;
 						}
 					}
@@ -359,12 +359,13 @@ public class LSPProcessManager {
 		}
 		
 		void cleanup() {
-
+			LOG.info("process cleanup");
 			if (outputHandler != null && outputHandler.isAlive()) outputHandler.interrupt();
 			if (logHandler != null && logHandler.isAlive() ) logHandler.interrupt();
 
 			// !! Process must be closed before closing the LSP out reader otherwise the out reader is stuck on close!!!
 			if ( process != null ) {
+
 				if ( process.isAlive() )
 					process.destroyForcibly();
 				process = null;
