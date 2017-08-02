@@ -13,11 +13,24 @@ import javax.websocket.server.ServerEndpoint;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
+
+import org.apache.http.HttpEntity;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.ResponseHandler;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.util.EntityUtils;
 
 @WebListener
 @ServerEndpoint(value="/LanguageServer/{ws}/{lang}", subprotocols={"access_token","local_access"}, configurator = GetHttpSessionConfigurator.class)
@@ -31,7 +44,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 	private static final String ENV_AUTH = "auth";
 
 	
-	private static Map<String,LangServerCtx> langContexts = new HashMap<String,LangServerCtx>();
+	private static Map<String,LangServerCtx> langContexts = new HashMap<>();
 	
 	private static final LSPProcessManager procManager = new LSPProcessManager(langContexts);
 
@@ -108,16 +121,16 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
         RemoteEndpoint.Basic remoteEndpointBasic = session.getBasicRemote();
 
         try {
-
+          
             LSPProcess process = procManager.createProcess(ws, lang, remoteEndpointBasic);
 
             try {
                 process.run();
                 session.getUserProperties().put(LANG_CONTEXT, langContexts.get(lang));
                 session.getUserProperties().put(LANG_SRV_PROCESS, process);
+                registerWSSyncListener(LSPProcessManager.processKey(ws, lang),  "/" + ws + "/" + lang,true);
                 informReady(remoteEndpointBasic, true);
             } catch (LSPException e) {
-                // TODO Auto-generated catch block
                 informReady(remoteEndpointBasic, false);
                 session.close(new CloseReason(CloseCodes.UNEXPECTED_CONDITION, "Fatal error"));
             }
@@ -180,11 +193,45 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 		remote.sendText(readyMsg);
 	}
 	
+
+	private static final String DI_TOKEN_ENV = "DiToken";
+	
+	private void registerWSSyncListener(String procKey, String listenerPath, boolean onOff) {
+		String diToken = System.getenv(DI_TOKEN_ENV);
+        try (CloseableHttpClient httpclient = HttpClients.createSystem()) {
+        	
+            HttpPost post = new HttpPost("http://localhost:8080/WSSynchronization");
+            post.addHeader("Register-lsp", onOff ? "true" : "false");
+            post.addHeader(DI_TOKEN_ENV,diToken == null ? diToken : "");
+            List<NameValuePair> nameValuePairs = new ArrayList<>(1);   
+            nameValuePairs.add(new BasicNameValuePair(procKey, listenerPath));
+            post.setEntity(new UrlEncodedFormEntity(nameValuePairs));
+            // Create a custom response handler
+            ResponseHandler<String> responseHandler = response -> {
+                int status = response.getStatusLine().getStatusCode();
+                if (status >= 200 && status < 300) {
+                	LOG.info("WS Notification listener registration OK: " + response.getStatusLine());
+                    HttpEntity entity = response.getEntity();
+                    return entity != null ? EntityUtils.toString(entity) : null;
+                } else {
+                	LOG.severe("WS Notification listener registration error: " + response.getStatusLine());
+                    throw new ClientProtocolException("Unexpected response status: " + status);
+                }
+            };
+            LOG.info("LSP notification registration sending to " + post.getRequestLine().toString());
+            String responseBody = httpclient.execute(post, responseHandler);
+        } catch (IOException ex) {
+            LOG.severe("WS Notification listener registration error: " + ex.getMessage());
+       }
+		
+	}
+
 	private boolean validateWSSecurityToken(String token) {
         Date date = new Date();
         Date expiratioDate = new Date(Long.valueOf(System.getProperty("com.sap.lsp.cf.ws.expirationDate")));
         return (token.equals(System.getProperty("com.sap.lsp.cf.ws.token")) && date.before(expiratioDate));
     }
+
 
 
 }

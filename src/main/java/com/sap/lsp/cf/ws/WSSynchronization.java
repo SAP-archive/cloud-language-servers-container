@@ -8,7 +8,12 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.Part;
+
+import com.sap.lsp.cf.ws.WSChangeObserver.ChangeType;
+import com.sap.lsp.cf.ws.WSChangeObserver.LSPDestination;
+
 import java.io.*;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
@@ -17,6 +22,9 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -45,13 +53,13 @@ public class WSSynchronization extends HttpServlet {
 	private static final int CHANGE_CHANGED = 2;
 	private static final int CHANGE_DELETED = 3;
 	
+	private Map<String, LSPDestination> lspDestPath = new ConcurrentHashMap<>(); 
        
     /**
      * @see HttpServlet#HttpServlet()
      */
     public WSSynchronization() {
         super();
-        // TODO Auto-generated constructor stub
     }
 
     @Override
@@ -87,7 +95,6 @@ public class WSSynchronization extends HttpServlet {
 			}
     	}
         this.saveDir =  wsSaveDir != null ? wsSaveDir + "/" : SAVE_DIR + "/";
-    	wsLSP  = new WebSocketClient();
 
     }
 
@@ -100,11 +107,15 @@ public class WSSynchronization extends HttpServlet {
 	}
 
 	private void initialSync(HttpServletRequest request, HttpServletResponse response, String workspaceRoot, String workspaceSaveDir) throws IOException, ServletException {
-		for (Part part : request.getParts()) {
+		// Expected: one part containing zip 
+		try {
+			Part part = request.getParts().iterator().next();
 			syncWorkspace(part.getInputStream(), new File(workspaceSaveDir));
+			response.getWriter().append(workspaceRoot);
+			response.setStatus(HttpServletResponse.SC_CREATED);
+		} catch (NoSuchElementException ePart) {
+			response.setStatus(HttpServletResponse.SC_NOT_MODIFIED);
 		}
-		response.getWriter().append(workspaceRoot);
-		response.setStatus(HttpServletResponse.SC_CREATED);
 	}
 
 	/**
@@ -119,7 +130,6 @@ public class WSSynchronization extends HttpServlet {
 		} else if (requestURI.length() > servletPath.length() )  {
 			addNewFiles(request, response);
 		}
-		
 	}
 
 	private void addNewFiles(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
@@ -131,47 +141,64 @@ public class WSSynchronization extends HttpServlet {
 			response.setStatus(HttpServletResponse.SC_FORBIDDEN);
 			return;
 		}
-		for (Part part : request.getParts()) {
-			extracted.addAll(extract(part.getInputStream(), destination, artifactRelPath));
+		// Expected: one part containing zip
+		try{ 
+			Part part = request.getParts().iterator().next();
+			WSChangeObserver changeObserver = new WSChangeObserver(ChangeType.CHANGE_CREATED, lspDestPath);
+			extracted.addAll(extract(part.getInputStream(), destination, artifactRelPath, changeObserver));
+			notifyLSP(changeObserver);
+			if (extracted.size() > 0) {
+				response.setContentType("application/json");
+				response.getWriter().append(String.format("{ \"created\": \"%s\"}", artifactRelPath));
+				response.setStatus(HttpServletResponse.SC_CREATED);
+			} else {
+				response.setStatus(HttpServletResponse.SC_CONFLICT);
+			}
+		} catch (NoSuchElementException ePart) {
+			response.setStatus(HttpServletResponse.SC_NOT_MODIFIED);
 		}
 
-		if (extracted.size() > 0) {
-			response.setStatus(HttpServletResponse.SC_CREATED);
-			if ( wsLSP.isClosed() ) {
-				wsLSP.connect("ws://localhost:8080/LanguageServer/ws/java?local");
-			}
-			String msg = buildLSPNotification(CHANGE_CREATED, extracted);
-			wsLSP.sendNotification(msg);
-		} else {
-			response.setStatus(HttpServletResponse.SC_CONFLICT);
-		}
 	}
 
 	/**
 	 * @see HttpServlet#doPut(HttpServletRequest request, HttpServletResponse response)
 	 */
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+		
+		// Check if it is LSP registration
+		String lspReg = request.getHeader("Register-lsp");
+		if ( lspReg != null ) {
+			handleLSPDest(Boolean.parseBoolean(lspReg), request.getReader());
+			return;
+		}
+		
+		// Otherwise process data passed from DI
 		String artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1);
 		String artifactPath = this.saveDir + artifactRelPath;
 		List<String> extracted = new ArrayList<>();
-
+		WSChangeObserver changeObserver = null;
+		
 		File destination = new File(artifactPath);
-		for (Part part : request.getParts()) {
-			if (destination.exists() && !destination.isDirectory()) {
-				extracted.addAll(extract(part.getInputStream(), destination, artifactRelPath));
+		// Expected: one part containing zip
+
+		try{ 
+			Part part = request.getParts().iterator().next();
+		
+			if ( destination.exists() && !destination.isDirectory()) {
+				changeObserver = new WSChangeObserver(ChangeType.CHANGE_UPDATED, lspDestPath);
+				extracted.addAll(extract(part.getInputStream(), destination, artifactRelPath, changeObserver));
+				notifyLSP(changeObserver);
 			}
-		}
-		if (extracted.size() > 0) {
-			if ( wsLSP.isClosed() ) {
-				wsLSP.connect("ws://localhost:8080/LanguageServer/ws/java?local");
+
+			if (extracted.size() > 0) {
+				response.setContentType("application/json");
+				response.getWriter().append(String.format("{ \"updated\": \"%s\"}", artifactRelPath));
+				response.setStatus(HttpServletResponse.SC_OK);
+			} else {
+				response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
 			}
-			String msg = buildLSPNotification(CHANGE_CHANGED, extracted);
-			wsLSP.sendNotification(msg);
-			response.setContentType("application/json");
-			response.getWriter().append(String.format("{ \"updated\": \"%s\"}", artifactRelPath));
-			response.setStatus(HttpServletResponse.SC_OK);
-		} else {
-			response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+		} catch (NoSuchElementException ePart) {
+			response.setStatus(HttpServletResponse.SC_NOT_MODIFIED);
 		}
 	}
 
@@ -182,7 +209,8 @@ public class WSSynchronization extends HttpServlet {
 	protected void doDelete(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		String artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1);
 		String artifactPath = this.saveDir + artifactRelPath;
-		List<String> deleted  = new ArrayList<String>();
+		List<String> deleted  = new ArrayList<>();
+		WSChangeObserver changeObserver = null;
 
 		File destination = new File(artifactPath);
 		if ( !destination.exists() ) {
@@ -192,12 +220,9 @@ public class WSSynchronization extends HttpServlet {
 		} else {
 			response.setContentType("application/json");
 			response.getWriter().append(String.format("{ \"deleted\": \"%s\"}", artifactRelPath));
-			if ( wsLSP.isClosed() ) {
-				wsLSP.connect("ws://localhost:8080/LanguageServer/ws/java?local");
-			}
-			deleted.add(artifactPath);
-			String msg = buildLSPNotification(CHANGE_DELETED, deleted);
-			wsLSP.sendNotification(msg);
+			changeObserver = new WSChangeObserver(ChangeType.CHANGE_DELETED, lspDestPath);
+			changeObserver.onChangeReported("ws", artifactPath.substring(artifactPath.lastIndexOf('.') + 1), artifactPath);
+			notifyLSP(changeObserver);
 		}
 	}
 
@@ -214,8 +239,8 @@ public class WSSynchronization extends HttpServlet {
 				    .reduce((a, b) -> a && b)
 				    .ifPresent(isSuccess -> LOG.warning( "Some delete operation failed"));
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				LOG.warning( e.toString());
+				return;
 			}
 		}
 		if ( !destination.exists() ) { if (!destination.mkdirs()) {
@@ -268,17 +293,17 @@ public class WSSynchronization extends HttpServlet {
 				zipentry = zipinputstream.getNextEntry();
 			}
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 			LOG.warning("UNZIP error: " + e.toString());
 		}
 
 	}
-
-	private List<String> extract(InputStream inputstream, File destination, String zipPath) {
+	
+	private List<String> extract(InputStream inputstream, File destination, String zipPath, WSChangeObserver changeObserver) {
         byte[] buf = new byte[1024];
         ZipEntry zipentry;
         List<String> extracted = new ArrayList<>();
+        String wsKey = "ws";
+        
 
         try (ZipInputStream zipinputstream = new ZipInputStream(inputstream)) {
 			zipentry = zipinputstream.getNextEntry();
@@ -295,14 +320,16 @@ public class WSSynchronization extends HttpServlet {
 					while ((n = zipinputstream.read(buf, 0, 1024)) > -1) {
 						fileoutputstream.write(buf, 0, n);
 					}
-				}
-				zipinputstream.closeEntry();
-				if ( !destination.exists()) LOG.warning("File creation error");
-				extracted.add(destination.getPath());
-				break;
+		            zipinputstream.closeEntry();
+		            if ( !destination.exists()) LOG.warning("File creation error");
+		            String filePath = destination.getPath();
+		            extracted.add(filePath);
+		            changeObserver.onChangeReported(wsKey, filePath.substring(filePath.lastIndexOf('.') + 1), filePath);
+		            break;
+		        }
+		
 			}
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 			LOG.warning("UNZIP error: " + e.toString());
 		}
@@ -324,6 +351,34 @@ public class WSSynchronization extends HttpServlet {
 				.build();
 		String body = bodyObj.toString();
 		return String.format("Content-Length: %d\r\n\r\n%s", body.length(), body);
+	}
+
+	private void notifyLSP(WSChangeObserver changeObserver) {
+		for ( LSPDestination dest : changeObserver.getLSPDestinations()) {
+			String message = buildLSPNotification(changeObserver.getType(), changeObserver.getArtifacts(dest));
+			dest.getWebSocketClient().sendNotification(message);
+		}
+		
+	}
+	
+	private void handleLSPDest(boolean bReg, BufferedReader reader) {
+		try {
+			String pathMap = URLDecoder.decode(reader.readLine(),"UTF-8");
+			if ( pathMap.length() == 0 || pathMap.indexOf("=") == -1 ) return;
+			String pm[] = pathMap.split("=");
+			String path = pm[0];
+			String dest = pm[1];
+			if (bReg) {
+				lspDestPath.put(path, new LSPDestination(dest,new WebSocketClient()));
+				LOG.info("WS Sync dest registered " + path + " dest " + dest);
+			} else {
+				if(lspDestPath.remove(path) != null) LOG.info("WS Sync unregistered " + path);
+			}
+		} catch (IOException e) {
+			LOG.severe("WS Sync - can't register LSP destination for notifications due to " + e.getMessage());
+		}
+		
+		
 	}
 
 

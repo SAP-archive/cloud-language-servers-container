@@ -55,16 +55,17 @@ describe('Protocol test (LSP is socket server)', () => {
 		    rp(tokenSync).then(function(parsedResp) {
 		    	console.log("Open WS after Sec Token sent");
 	            var subprotocol = ["access_token", "12345"];
-	            var ws_o = new WebSocket('ws://localhost:8080/LanguageServer/ws/java', subprotocol);
+	            var ws_o = new WebSocket('ws://localhost:8080/LanguageServer/ws/cdx', subprotocol);
 	            ws_o.on('open',function open(){
 	                ws = ws_o;
 	                ws.on('message',onMessage);
 	                console.log("Test for ready.........");
 	                resolve();
-	            })
-                ws_o.on('close',function close() {
-                    ws = null;
-                });
+	            });
+				ws_o.on('close',function close() {
+					ws = null;
+				});
+
 		    }).catch(function(err){
 			    reject(err);
 		    });

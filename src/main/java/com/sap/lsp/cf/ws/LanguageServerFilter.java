@@ -22,7 +22,6 @@ public class LanguageServerFilter implements Filter {
 
     @Override
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
-        LOG.info("LSP filter doFilter");
         HttpServletResponse httpResponse = (HttpServletResponse) servletResponse;
         String requestUuid = extractDIToken(servletRequest);
         if (System.getenv().containsKey(DI_TOKEN_ENV)) {

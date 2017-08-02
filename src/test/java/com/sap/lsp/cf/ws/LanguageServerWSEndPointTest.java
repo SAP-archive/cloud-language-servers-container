@@ -4,47 +4,32 @@ import static org.junit.Assert.*;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
-import java.io.File;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.attribute.FileAttribute;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
 import javax.websocket.CloseReason;
-import javax.websocket.CloseReason.CloseCode;
-import javax.websocket.server.HandshakeRequest;
 import javax.websocket.EndpointConfig;
 import javax.websocket.RemoteEndpoint;
 import javax.websocket.Session;
+import javax.websocket.server.HandshakeRequest;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Matchers;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import com.sap.lsp.cf.ws.LSPProcessManager.LSPProcess;
 
-import org.powermock.api.easymock.PowerMock;
-import org.easymock.EasyMock;
-import org.easymock.IExpectationSetters;
-import org.mockito.internal.util.reflection.Whitebox;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
-
 
 @RunWith(PowerMockRunner.class)
 @PrepareForTest( { LangServerCtx.class, LanguageServerWSEndPoint.class } )
@@ -92,6 +77,7 @@ public class LanguageServerWSEndPointTest {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		
+
 		testUtil = new LSPEndPointTestUtil();
 		String log = testUtil.createInfra();
 		LOG.info(log);
@@ -125,10 +111,7 @@ public class LanguageServerWSEndPointTest {
 		doReturn(lspProcessMock).when(procManagerMock).createProcess(any(), any(), any());
 		doReturn(lspProcessMock).when(procManagerMock).getProcess(any());
 		
-//		PowerMockito.mockStatic(System.class);
-//		PowerMockito.when(System.getProperty("com.sap.lsp.cf.ws.token")).thenReturn(Long.toString(System.currentTimeMillis() + 60 * 60 * 1000));
-//		PowerMockito.when(System.getProperty("com.sap.lsp.cf.ws.expiratioDate")).thenReturn("abc");
-		
+
 		System.setProperty("com.sap.lsp.cf.ws.token","12345");
 		System.setProperty("com.sap.lsp.cf.ws.expirationDate",Long.toString(System.currentTimeMillis() + 60 * 60 * 1000));
 		
@@ -152,6 +135,7 @@ public class LanguageServerWSEndPointTest {
 
 
 		cut = new LanguageServerWSEndPoint();
+
 		setInternalState(cut, "langContexts", testUtil.getCtx());
 		setInternalState(cut, "procManager", procManagerMock);
 

@@ -2,12 +2,9 @@ package com.sap.lsp.cf.ws;
 
 import static org.junit.Assert.*;
 
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.Map;
+
 import java.util.logging.Logger;
+
 
 import org.junit.After;
 import org.junit.AfterClass;
@@ -27,6 +24,7 @@ public class LSPProcessManagerTest {
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
+
 		
 		testUtil = new LSPEndPointTestUtil();
 		String log = testUtil.createInfra();
