@@ -137,7 +137,9 @@ public class WSSynchronization extends HttpServlet {
 		File destination;List<String> extracted = new ArrayList<>();
 		artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1 );
 		destination = new File(this.saveDir + artifactRelPath);
-		if (!destination.createNewFile()) {
+		if (destination.exists()) {
+			response.setContentType("application/json");
+			response.getWriter().append(String.format("{ \"error\": \"already exists %s\"}", destination.getPath()));
 			response.setStatus(HttpServletResponse.SC_FORBIDDEN);
 			return;
 		}
@@ -145,16 +147,23 @@ public class WSSynchronization extends HttpServlet {
 		try{ 
 			Part part = request.getParts().iterator().next();
 			WSChangeObserver changeObserver = new WSChangeObserver(ChangeType.CHANGE_CREATED, lspDestPath);
-			extracted.addAll(extract(part.getInputStream(), destination, artifactRelPath, changeObserver));
-			notifyLSP(changeObserver);
+			destination.getParentFile().mkdirs();
+			if ( destination.createNewFile() ) {
+				extracted.addAll(extract(part.getInputStream(), destination, artifactRelPath, changeObserver));
+				notifyLSP(changeObserver);
+			}
 			if (extracted.size() > 0) {
 				response.setContentType("application/json");
 				response.getWriter().append(String.format("{ \"created\": \"%s\"}", artifactRelPath));
 				response.setStatus(HttpServletResponse.SC_CREATED);
 			} else {
+				response.setContentType("application/json");
+				response.getWriter().append(String.format("{ \"error\": \"conflict %s\"}", artifactRelPath));
 				response.setStatus(HttpServletResponse.SC_CONFLICT);
 			}
 		} catch (NoSuchElementException ePart) {
+			response.setContentType("application/json");
+			response.getWriter().append(String.format("{ \"error\": \"exception for %s\"}", artifactRelPath));
 			response.setStatus(HttpServletResponse.SC_NOT_MODIFIED);
 		}
 
@@ -214,14 +223,18 @@ public class WSSynchronization extends HttpServlet {
 
 		File destination = new File(artifactPath);
 		if ( !destination.exists() ) {
+			response.setContentType("application/json");
+			response.getWriter().append(String.format("{ \"notExists\": \"%s\"}", destination.getPath()));
 			response.setStatus(HttpServletResponse.SC_NOT_FOUND);
 		} else if ( !destination.delete() ) {
+			response.setContentType("application/json");
+			response.getWriter().append(String.format("{ \"error\": \"%s\"}", destination.getPath()));
 			response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
 		} else {
 			response.setContentType("application/json");
 			response.getWriter().append(String.format("{ \"deleted\": \"%s\"}", artifactRelPath));
 			changeObserver = new WSChangeObserver(ChangeType.CHANGE_DELETED, lspDestPath);
-			changeObserver.onChangeReported("ws", artifactPath.substring(artifactPath.lastIndexOf('.') + 1), artifactPath);
+			changeObserver.onChangeReported("ws" + File.separator + artifactRelPath, artifactPath.substring(artifactPath.lastIndexOf('.') + 1), artifactPath);
 			notifyLSP(changeObserver);
 		}
 	}
@@ -302,7 +315,7 @@ public class WSSynchronization extends HttpServlet {
         byte[] buf = new byte[1024];
         ZipEntry zipentry;
         List<String> extracted = new ArrayList<>();
-        String wsKey = "ws";
+        String wsKey = "ws" + File.separator + zipPath;
         
 
         try (ZipInputStream zipinputstream = new ZipInputStream(inputstream)) {
@@ -313,7 +326,7 @@ public class WSSynchronization extends HttpServlet {
 					continue;
 				}
 
-				LOG.info("UNZIP Updating " + destination.getAbsolutePath());
+				LOG.info("UNZIP Updating " + destination.getAbsolutePath() + " zipPath " + zipPath);
 
 				try (FileOutputStream fileoutputstream = new FileOutputStream(destination)){
 					int n;
@@ -369,7 +382,7 @@ public class WSSynchronization extends HttpServlet {
 			String path = pm[0];
 			String dest = pm[1];
 			if (bReg) {
-				lspDestPath.put(path, new LSPDestination(dest,new WebSocketClient()));
+				lspDestPath.put(path, new LSPDestination(dest, WebSocketClient.getInstance()));
 				LOG.info("WS Sync dest registered " + path + " dest " + dest);
 			} else {
 				if(lspDestPath.remove(path) != null) LOG.info("WS Sync unregistered " + path);

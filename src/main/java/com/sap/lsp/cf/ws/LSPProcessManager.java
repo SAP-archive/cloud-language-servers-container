@@ -7,6 +7,7 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -22,6 +23,9 @@ public class LSPProcessManager {
 	private static final String ENV_IPC_OUT_PORT = "outport";
 	private static final String ENV_PIPE_IN = "pipein";
 	private static final String ENV_IPC_CLIENT_PORT = "clientport";
+	
+	private static final String WSKEY_DELIMITER = "~";
+
 
 //	public static final String DEBUG_CLIENT = "debugclient";
 	
@@ -30,6 +34,7 @@ public class LSPProcessManager {
 	void cleanProcess(String ws, String lang) {
 		LSPProcess lspProc = lspProcesses.remove(LSPProcessManager.processKey(ws, lang));
 		lspProc.cleanup();
+		
 	}
 
 	private static class OutputStreamHandler extends Thread {
@@ -225,10 +230,14 @@ public class LSPProcessManager {
 		private Process process;
 		private ProcessBuilder pb;
 		private RemoteEndpoint.Basic remoteEndpoint = null;
+		private String projPathElem = ""; 
+
+;
 		
-		public LSPProcess(ProcessBuilder pb, Basic remoteEndpoint) {
+		public LSPProcess(String wsKeyElem[], ProcessBuilder pb, Basic remoteEndpoint) {
 			this.pb = pb;
 			this.remoteEndpoint = remoteEndpoint; 
+			this.projPathElem = "/" + String.join("/", Arrays.copyOfRange(wsKeyElem,1,wsKeyElem.length));
 		}
 
 
@@ -426,6 +435,12 @@ public class LSPProcessManager {
 			this.ipc = stream;
 			LOG.info(String.format("Stream IPC"));
 		}
+
+
+		public String getProjPath() {
+			// TODO Auto-generated method stub
+			return this.projPathElem;
+		}
 		
 	}
 
@@ -437,11 +452,13 @@ public class LSPProcessManager {
 
 	private Map<String, LSPProcess> lspProcesses = Collections.synchronizedMap(new HashMap<String, LSPProcess>());
 
-	public synchronized LSPProcess createProcess(String wsKey, String lang, RemoteEndpoint.Basic remoteEndpoint) {
+	public synchronized LSPProcess createProcess(String wsKey, String lang, RemoteEndpoint.Basic remoteEndpoint) throws LSPException {
 
 		String procKey = processKey(wsKey,lang);
 		String rpcType = langContexts.get(lang).getRpcType();
-		LSPProcess newlsp = new LSPProcess(langContexts.get(lang).getProcessBuilder(), remoteEndpoint);
+		String wsKeyElem[] = wsKey.split(WSKEY_DELIMITER,3);
+		
+		LSPProcess newlsp = new LSPProcess(wsKeyElem, langContexts.get(lang).getProcessBuilder(wsKeyElem), remoteEndpoint);
 		switch(rpcType) {
 		case ENV_IPC_SOCKET:
 			socketEnv(newlsp, LangServerCtx.LangPrefix(lang));

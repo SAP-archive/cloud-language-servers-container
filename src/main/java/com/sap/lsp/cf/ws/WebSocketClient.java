@@ -12,14 +12,24 @@ public class WebSocketClient {
     private Session userSession = null;
     private CompletableFuture<String> response;
     private String waitFor;
+	private String uri;
     
     private static final Logger LOG = Logger.getLogger(WebSocketClient.class.getName());
 
+    private WebSocketClient() {
+    	
+    }
+    
+    public static WebSocketClient getInstance() {
+    	return new WebSocketClient();
+    }
+    
     public void connect(String uri) {
         try {
             WebSocketContainer container = ContainerProvider
                     .getWebSocketContainer();
             container.connectToServer(this, new URI(uri));
+            this.setUri(uri);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -80,5 +90,13 @@ public class WebSocketClient {
             throw new RuntimeException("Session closed");
         }
     }
+
+	public String getUri() {
+		return uri;
+	}
+
+	public void setUri(String uri) {
+		this.uri = uri;
+	}
 
 }

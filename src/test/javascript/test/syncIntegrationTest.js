@@ -4,11 +4,16 @@ const assert = require("chai").assert;
 const fs = require('fs');
 const request = require('request');
 const path = require('path');
+const tu = require('./util/Util');
+
+
 const pathPrefix = "http://localhost:8080/WSSynchronization";
+const modulePath = "/myProject/myModule";
 
 const COMMON_OPTIONS = {
 	headers: {
-		"Content-Type": "multipart/form-data"
+		"Content-Type": "multipart/form-data",
+		"DiToken": "THEDITOKEN"
 	}
 };
 
@@ -19,16 +24,15 @@ describe('Sync Integration Test', function () {
 
     after(function () {
         try {
-            fs.rmdirSync(folderPath + "/java");
-            fs.rmdirSync(folderPath);
+        	tu.deleteFolderRecursive(folderPath);
         } catch (e) {
-            console.error("Error while deleting root folder");
+            console.error("Error while deleting root folder " + folderPath + " due to " + e);
         }
     });
 
     function deleteSingleFile() {
 		return new Promise(function (resolve, reject) {
-			request.delete(pathPrefix + '/java/test.java', COMMON_OPTIONS, function (err, res, body) {
+			request.delete(pathPrefix + modulePath + '/java/test.java', COMMON_OPTIONS, function (err, res, body) {
 				onDeleteResponse(err, res, body, resolve, reject);
 			});
 		});
@@ -40,9 +44,10 @@ describe('Sync Integration Test', function () {
 		assert.ok(res);
         if (isInit){
             folderPath = body.substring(7);
-            filePath = path.join(path.normalize(folderPath + "/java/test.java"));
+            filePath = path.join(path.normalize(folderPath + modulePath +"/java/test.java"));
         }
-        assert.equal(res.statusCode, 201);
+        console.log("Put resp: " + body);
+        assert.equal(201, res.statusCode, "File creation error ");
         assert.ok(fs.existsSync(filePath));
         resolve(res);
     }
@@ -76,7 +81,7 @@ describe('Sync Integration Test', function () {
 		}).then(function () {
 			// putting file that already exists should fail
 			return new Promise(function (resolve, reject) {
-				let req = request.put(pathPrefix + '/java/test.java', COMMON_OPTIONS, function (err, res, body) {
+				let req = request.put(pathPrefix + modulePath + '/java/test.java', COMMON_OPTIONS, function (err, res, body) {
 					assert.equal(res.statusCode, 403);
 					resolve(res);
 				});
@@ -89,7 +94,7 @@ describe('Sync Integration Test', function () {
     it('Update file that does not exist should fail', () => {
 		let zipPostFilePath = path.resolve(__dirname, '../resources/postTest.zip');
 		return new Promise(function (resolve, reject) {
-			let req = request.post(pathPrefix + '/java/test.java', COMMON_OPTIONS, function (err, res, body) {
+			let req = request.post(pathPrefix + modulePath + '/java/testMissed.java', COMMON_OPTIONS, function (err, res, body) {
 				assert.equal(res.statusCode, 500);
 				resolve(res);
 			});
@@ -102,14 +107,14 @@ describe('Sync Integration Test', function () {
 		let zipPutFilePath = path.resolve(__dirname, '../resources/putTest.zip');
 		let zipPostFilePath = path.resolve(__dirname, '../resources/postTest.zip');
 		return new Promise(function (resolve, reject) {
-			let req = request.put(pathPrefix + '/java/test.java', COMMON_OPTIONS, function (err, res, body) {
+			let req = request.put(pathPrefix + modulePath + '/java/test.java', COMMON_OPTIONS, function (err, res, body) {
 				onPutResponse(err, res, body, resolve, reject, false);
 			});
 			let putForm = req.form();
 			putForm.append('file', fs.createReadStream(zipPutFilePath));
 		}).then(function () {
 			return new Promise(function (resolve, reject) {
-				let req = request.post(pathPrefix + '/java/test.java', COMMON_OPTIONS, function (err, res, body) {
+				let req = request.post(pathPrefix + modulePath + '/java/test.java', COMMON_OPTIONS, function (err, res, body) {
 					onPostResponse(err, res, body, resolve, reject);
 				});
 				let postForm = req.form();

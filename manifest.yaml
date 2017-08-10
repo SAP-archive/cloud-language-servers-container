@@ -6,7 +6,7 @@ applications:
   path: target/LSPServerCF.war
 #  buildpack: https://github.com/cloudfoundry/java-buildpack.git
 #  buildpack: https://github.infra.hana.ondemand.com/i016373/java_buildpack.git
-  buildpack: https://github.com/PavelSosin/java-buildpack.git
+  buildpack: https://github.com/PavelSosin/java-buildpack.git#multiproj
   stack: cflinuxfs2
   env: 
     JAVA-OPTS: -agentlib:jdwp=transport=dt_socket,address=195.93.234.9:8000

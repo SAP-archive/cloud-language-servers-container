@@ -1,7 +1,9 @@
 package com.sap.lsp.cf.ws;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -21,7 +23,7 @@ public class LangServerCtx extends HashMap<String,String> {
 	private String workdir;
 
 	private static final Logger LOG = Logger.getLogger(LangServerCtx.class.getName());
-	
+
 	public LangServerCtx(String lang) {
 		
 		this.lang = lang;
@@ -38,7 +40,7 @@ public class LangServerCtx extends HashMap<String,String> {
 		
 	}
 	
-	public ProcessBuilder getProcessBuilder() {
+	public ProcessBuilder getProcessBuilder(String[] wsKeyElem) throws LSPException {
 
 		File wDir;
 		
@@ -62,18 +64,17 @@ public class LangServerCtx extends HashMap<String,String> {
 	        LOG.info("LSP Working dir is " + workdir);
 	        LOG.info("LSP Env HOME: " + System.getenv("HOME"));
 		}
+		
 
-		ProcessBuilder pb;
-		String os = System.getProperty("os.name").toLowerCase();
-		if (os.contains("nix") || os.contains("nux") || os.contains("aix")) {    //Unix
-			pb = new ProcessBuilder("/bin/bash", launcherScript);
-		} else if (os.contains("win")) { //Windows
-			pb = new ProcessBuilder("cmd.exe", "/C " + launcherScript);
-		} else {
-			LOG.severe("OS not supported");
-			throw new LSPConfigurationException();
+		List<String> cmd = new ArrayList<>();
+		String scriptExec = System.getProperty("os.name").substring(0,3).equalsIgnoreCase("win") ? "cmd.exe /C" : "/bin/bash";
+		cmd.add(scriptExec);
+		cmd.add(launcherScript);
+		for(String wsPar : wsKeyElem) {
+			cmd.add(wsPar);
 		}
 
+		ProcessBuilder pb = new ProcessBuilder(cmd);
 		pb.directory(wDir);
 		pb.redirectErrorStream(true);
 		
@@ -97,5 +98,9 @@ public class LangServerCtx extends HashMap<String,String> {
 
 	protected void setBaseDir(String baseDir) {
 		BASE_DIR = baseDir;
-	}	
+	}
+	
+	protected String getBaseDir() {
+		return BASE_DIR;
+	}
 }

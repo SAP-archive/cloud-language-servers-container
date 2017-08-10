@@ -43,6 +43,9 @@ before(function(){
     var tokenSync = {
 	    method: "POST",
 	    uri: "http://localhost:8080/UpdateToken/?expiration=" + milliSec + "&token=12345",
+	    headers: {
+	        'DiToken': 'THEDITOKEN'
+	    },
 	    body: {},
 	    json: true
     };

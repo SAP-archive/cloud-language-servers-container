@@ -120,15 +120,15 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 
         RemoteEndpoint.Basic remoteEndpointBasic = session.getBasicRemote();
 
-        try {
+       try {
           
-            LSPProcess process = procManager.createProcess(ws, lang, remoteEndpointBasic);
-
             try {
+                LSPProcess process = procManager.createProcess(ws, lang, remoteEndpointBasic);
+
                 process.run();
                 session.getUserProperties().put(LANG_CONTEXT, langContexts.get(lang));
                 session.getUserProperties().put(LANG_SRV_PROCESS, process);
-                registerWSSyncListener(LSPProcessManager.processKey(ws, lang),  "/" + ws + "/" + lang,true);
+                registerWSSyncListener(LSPProcessManager.processKey(process.getProjPath(), lang),  "/" + ws + "/" + lang,true);
                 informReady(remoteEndpointBasic, true);
             } catch (LSPException e) {
                 informReady(remoteEndpointBasic, false);
@@ -145,7 +145,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 		if ( message.length() == 0 ) return; // This is just ping!
 		IdleTimeHolder.getInstance().registerUserActivity();
 		LOG.info("LSP: onMessage is invoked: \n" + message);
-		LOG.info(String.format("LSP: get Head Process for lang %s session %s", lang, session.getId()));
+		LOG.info(String.format("LSP: get Head Process for wsKey %s lang %s session %s", ws, lang, session.getId()));
 		LSPProcess lspProc = procManager.getProcess(LSPProcessManager.processKey(ws, lang));
 		lspProc.enqueueCall(message);
 	}
@@ -157,6 +157,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 			return;
 		}
 		LOG.info("LSP: OnClose is invoked");
+		registerWSSyncListener(LSPProcessManager.processKey(procManager.getProcess(LSPProcessManager.processKey(ws, lang)).getProjPath(), lang),  "/" + ws + "/" + lang,false);
 		procManager.cleanProcess(ws, lang);
 	}
 
@@ -199,10 +200,11 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 	private void registerWSSyncListener(String procKey, String listenerPath, boolean onOff) {
 		String diToken = System.getenv(DI_TOKEN_ENV);
         try (CloseableHttpClient httpclient = HttpClients.createSystem()) {
-        	
+        	assert procKey != null;
+        	assert listenerPath != null;
             HttpPost post = new HttpPost("http://localhost:8080/WSSynchronization");
             post.addHeader("Register-lsp", onOff ? "true" : "false");
-            post.addHeader(DI_TOKEN_ENV,diToken == null ? diToken : "");
+            post.addHeader(DI_TOKEN_ENV,diToken != null ? diToken : "");
             List<NameValuePair> nameValuePairs = new ArrayList<>(1);   
             nameValuePairs.add(new BasicNameValuePair(procKey, listenerPath));
             post.setEntity(new UrlEncodedFormEntity(nameValuePairs));
@@ -218,7 +220,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
                     throw new ClientProtocolException("Unexpected response status: " + status);
                 }
             };
-            LOG.info("LSP notification registration sending to " + post.getRequestLine().toString());
+            LOG.info("LSP notification registration sending to " + post.getRequestLine().toString() + " with token " + diToken);
             String responseBody = httpclient.execute(post, responseHandler);
         } catch (IOException ex) {
             LOG.severe("WS Notification listener registration error: " + ex.getMessage());

@@ -32,6 +32,10 @@ public class WSChangeObserver {
 		public WebSocketClient getWebSocketClient() {
 			return client;
 		}
+		
+		protected String getDestinationUri() {
+			return LSP_HOST + path + "?local";
+		}
 	}
 	
 	private Map<String, LSPDestination> lspDestinations; // Map of registered LSP url's
@@ -66,9 +70,9 @@ public class WSChangeObserver {
 	public void onChangeReported(String wsKey, String lang, String artifactUrl) {
 		String key = LSPProcessManager.processKey(wsKey, lang);
 		LOG.info(String.format("WS Sync Observer key %s artifact %s", key, artifactUrl));
-		if ( lspDestinations.containsKey(key)) {
-			artifacts.put(artifactUrl, lspDestinations.get(key));
-		}
+		lspDestinations.entrySet().stream()
+					.filter(map -> artifactFilter(map, wsKey, lang))
+					.forEach((e) -> { artifacts.put(artifactUrl, e.getValue()); });
 	}
 	
 	/**
@@ -92,6 +96,13 @@ public class WSChangeObserver {
 
 	public int getType() {
 		return changeType.opcode();
+	}
+	
+	private static boolean artifactFilter(Map.Entry<String,LSPDestination> regEntry, String path, String lang) {
+		String[] regKey = regEntry.getKey().split(":");
+		String pathFilter = "ws" + regKey[0];
+		String langFilter = regKey[1];
+		return langFilter.equals(lang) && path.startsWith(pathFilter);
 	}
 
 }

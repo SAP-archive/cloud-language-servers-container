@@ -9,13 +9,17 @@ const fs = require('fs');
 const request = require('request');
 const rp = require('request-promise');
 const path = require('path');
+const tu = require('./util/Util');
 
 
 const pathPrefix = "http://localhost:8080/WSSynchronization";
+const modulePath = "/myProject/myModule";
+
 
 const COMMON_OPTIONS = {
 	headers: {
-		"Content-Type": "multipart/form-data"
+		"Content-Type": "multipart/form-data",
+		"DiToken": "THEDITOKEN"
 	}
 };
 
@@ -30,7 +34,7 @@ describe('Sync Integration Full loop Test', function () {
 			"method":"workspace/didChangeWatchedFiles",
 			"params":{
 				"changes":[{
-					"uri":"file:///home/travis/di_ws_root/java/test.java","type":1
+					"uri":"file:///home/travis/di_ws_root/myProject/myModule/java/test.java","type":1
 				}]
 				
 			}
@@ -40,7 +44,7 @@ describe('Sync Integration Full loop Test', function () {
 			"method":"workspace/didChangeWatchedFiles",
 			"params":{
 				"changes":[{
-					"uri":"file:///home/travis/di_ws_root/java/test.java","type":2
+					"uri":"file:///home/travis/di_ws_root/myProject/myModule/java/test.java","type":2
 				}]
 				
 			}
@@ -50,7 +54,17 @@ describe('Sync Integration Full loop Test', function () {
 			"method":"workspace/didChangeWatchedFiles",
 			"params":{
 				"changes":[{
-					"uri":"file:///home/travis/di_ws_root/java/test.java","type":3
+					"uri":"file:///home/travis/di_ws_root/myProject/myModule/java/test.java","type":3
+				}]
+				
+			}
+		};
+	const createProjResp = {
+			"jsonrpc":"2.0",
+			"method":"workspace/didChangeWatchedFiles",
+			"params":{
+				"changes":[{
+					"uri":"file:///home/travis/di_ws_root/newProject/newModule/java1/test1.java","type":1
 				}]
 				
 			}
@@ -77,6 +91,9 @@ describe('Sync Integration Full loop Test', function () {
 	    var tokenSync = {
 		    method: "POST",
 		    uri: "http://localhost:8080/UpdateToken/?expiration=" + milliSec + "&token=12345",
+		    headers: {
+		        'DiToken': 'THEDITOKEN'
+		    },
 		    body: {},
 		    json: true
 	    };
@@ -92,7 +109,7 @@ describe('Sync Integration Full loop Test', function () {
 		    rp(tokenSync).then(function(parsedResp) {
 		    	console.log("Open WS after Sec Token sent");
 	            var subprotocol = ["access_token", "12345"];
-	            var ws_o = new WebSocket('ws://localhost:8080/LanguageServer/ws/java', subprotocol);
+	            var ws_o = new WebSocket('ws://localhost:8080/LanguageServer/ws~myProject~myModule/java', subprotocol);
 	            ws_o.on('open',function open(){
 	                ws = ws_o;
 	                ws.on('message',onMessage);
@@ -106,7 +123,7 @@ describe('Sync Integration Full loop Test', function () {
 		    }).catch(function(err){
 			    reject(err);
 		    });
-	    }),1000);
+	    }),10000);
 	    return readyPromise;
     }
     
@@ -125,17 +142,17 @@ describe('Sync Integration Full loop Test', function () {
     after(function () {
     	ws.close();
         try {
-            fs.rmdirSync(folderPath + "/java");
-            fs.rmdirSync(folderPath);
+        	tu.deleteFolderRecursive(folderPath);
         } catch (e) {
-            console.error("Error while deleting root folder");
+            console.error("Error while deleting root folder " + folderPath + " due to " + e);
         }
     });
-
+    
     function deleteSingleFile() {
+    	console.log("Delete single file" + pathPrefix + modulePath + '/java/test.java');
     	return Promise.all([
         	new Promise(function (resolve, reject) {
-    			request.delete(pathPrefix + '/java/test.java', COMMON_OPTIONS, function (err, res, body) {
+    			request.delete(pathPrefix + modulePath + '/java/test.java', COMMON_OPTIONS, function (err, res, body) {
     				onDeleteResponse(err, res, body, resolve, reject);
     			})
     		}),
@@ -153,21 +170,24 @@ describe('Sync Integration Full loop Test', function () {
 
 
     function onPutResponse(err, res, body, resolve, reject, isInit) {
-		assert.ok(!err);
+		assert.ok(!err,"Put request error" + err);
 		assert.ok(res);
         if (isInit){
+        	console.log("Init sync to " + body);
             folderPath = body.substring(7);
-            filePath = path.join(path.normalize(folderPath + "/java/test.java"));
+            filePath = path.join(path.normalize(folderPath + modulePath + "/java/test.java"));
         }
-        assert.equal(res.statusCode, 201);
-        assert.ok(fs.existsSync(filePath));
+        console.log("Put resp: " + body);
+        assert.equal(201, res.statusCode, "File creation error " );
+        assert.ok(fs.existsSync(filePath), "Was not created " + filePath);
         resolve(res);
     }
 
     function onPostResponse(err, res, body, resolve, reject) {
+    	console.log("Post resp: " + body);
 		assert.ok(!err);
         assert.ok(res);
-        assert.equal(res.statusCode, 200);
+        assert.equal(res.statusCode, 200, "Post error ");
         assert.ok(fs.existsSync(filePath));
         let newFileContent = fs.readFileSync(filePath).toString();
         assert.equal(newFileContent, "test", "Update file content check");
@@ -175,9 +195,10 @@ describe('Sync Integration Full loop Test', function () {
     }
 
     function onDeleteResponse(err, res, body, resolve, reject) {
+    	console.log("Delete resp: " + body);
 		assert.ok(!err);
 		assert.ok(res);
-        assert.equal(res.statusCode, 200);
+        assert.equal(res.statusCode, 200, "Delete error ");
         assert.ok(!fs.existsSync(filePath));
         resolve(res);
     }
@@ -193,9 +214,9 @@ describe('Sync Integration Full loop Test', function () {
 		}).then(function () {
 			// putting file that already exists should fail
 			return new Promise(function (resolve, reject) {
-				let req = request.put(pathPrefix + '/java/test.java', COMMON_OPTIONS, function (err, res, body) {
-					assert.equal(res.statusCode, 403);
-					resolve(res);
+				let req = request.put(pathPrefix + modulePath + '/java/test.java', COMMON_OPTIONS, function (err, resp, body) {
+					assert.equal(403, resp.statusCode, "Duplicate file creation err ");
+					resolve(resp);
 				});
 				let form = req.form();
 				form.append('file', fs.createReadStream(zipFilePath));
@@ -206,8 +227,8 @@ describe('Sync Integration Full loop Test', function () {
     it('Update file that does not exist should fail', () => {
 		let zipPostFilePath = path.resolve(__dirname, '../resources/postTest.zip');
 		return new Promise(function (resolve, reject) {
-			let req = request.post(pathPrefix + '/java/test.java', COMMON_OPTIONS, function (err, res, body) {
-				assert.equal(res.statusCode, 500);
+			let req = request.post(pathPrefix + modulePath + '/java/testMiss.java', COMMON_OPTIONS, function (err, res, body) {
+				assert.equal(res.statusCode, 500, "Update error expected");
 				resolve(res);
 			});
 			let postForm = req.form();
@@ -222,7 +243,7 @@ describe('Sync Integration Full loop Test', function () {
 		// Create a new artifact and send create notification
 		return Promise.all([
 			new Promise(function (resolve, reject) {
-		        let req = request.put(pathPrefix + '/java/test.java', COMMON_OPTIONS, function (err, res, body) {
+		        let req = request.put(pathPrefix + modulePath + '/java/test.java', COMMON_OPTIONS, function (err, res, body) {
 					onPutResponse(err, res, body, resolve, reject, false);
 				});
 				let putForm = req.form();
@@ -240,7 +261,7 @@ describe('Sync Integration Full loop Test', function () {
 		.then(function () {
 			return Promise.all([
 				new Promise(function (resolve, reject) {
-					let req = request.post(pathPrefix + '/java/test.java', COMMON_OPTIONS, function (err, res, body) {
+					let req = request.post(pathPrefix + modulePath + '/java/test.java', COMMON_OPTIONS, function (err, res, body) {
 						onPostResponse(err, res, body, resolve, reject);
 					});
 					let postForm = req.form();
@@ -258,4 +279,37 @@ describe('Sync Integration Full loop Test', function () {
 		// Delete the artifact and send delete notification
 		.then(deleteSingleFile);
     });
+	
+	it( 'New project creation', function() {
+		let zipNewProjPath = path.resolve(__dirname, '../resources/newProject.zip');
+		filePath = path.join(path.normalize(folderPath + '/newProject/newModule/java1/test1.java'));
+		return Promise.all([
+			new Promise(function (resolve, reject) {
+				console.log("New project " + pathPrefix + '/newProject/newModule/java1/test1.java' );
+		        let req = request.put(pathPrefix + '/newProject/newModule/java1/test1.java', COMMON_OPTIONS, function (err, res, body) {
+					onPutResponse(err, res, body, resolve, reject, false);
+				});
+				let putForm = req.form();
+				putForm.append('file', fs.createReadStream(zipNewProjPath));
+			}),
+			new Promise(function(resolve,reject){
+				// Check that no Message is sent - wait 1 sec
+		        var toId = setTimeout(function() {
+		        	// Clear subscriber and resolve
+		        	aSubscribers.pop();
+		        	resolve();
+		        },1000);
+
+		        aSubscribers.push({ method: "workspace/didChangeWatchedFiles", callback: function(oLspMsg){
+		        	console.log("Test create - loopback received:\n" + JSON.stringify(oLspMsg));
+		        	expect(oLspMsg,"Create notification faillure").to.deep.equal(createProjResp);
+		        	// Message is OK but not expected - clear timeout and reject
+		        	clearTimeout(toId);
+		        	reject("No message expected"); 
+		        }});
+		        
+			})
+		])
+		
+	});
 });

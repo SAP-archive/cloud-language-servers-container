@@ -5,7 +5,9 @@ import org.junit.runners.Suite;
 import org.junit.runners.Suite.SuiteClasses;
 
 @RunWith(Suite.class)
-@SuiteClasses({})
+@SuiteClasses({ IdleTimeHolderTest.class, LangServerCtxTest.class, LanguageServerWSEndPointTest.class,
+		LSPProcessManagerTest.class })
+
 public class AllTests {
 
 }

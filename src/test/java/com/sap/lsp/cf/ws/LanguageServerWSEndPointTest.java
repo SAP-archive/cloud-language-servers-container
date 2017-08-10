@@ -4,12 +4,18 @@ import static org.junit.Assert.*;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.Field;
+import java.net.URLDecoder;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import javax.websocket.CloseReason;
 import javax.websocket.EndpointConfig;
@@ -17,14 +23,32 @@ import javax.websocket.RemoteEndpoint;
 import javax.websocket.Session;
 import javax.websocket.server.HandshakeRequest;
 
+import org.apache.http.HttpHost;
+import org.apache.http.HttpRequest;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.ResponseHandler;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.conn.ClientConnectionManager;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.params.HttpParams;
+import org.apache.http.protocol.HttpContext;
+import org.apache.http.HttpEntityEnclosingRequest;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
+import static org.easymock.EasyMock.expect;
+import static org.powermock.api.easymock.PowerMock.mockStatic;
+import static org.powermock.api.easymock.PowerMock.replayAll;
+import static org.powermock.api.easymock.PowerMock.verifyAll;
 
 import com.sap.lsp.cf.ws.LSPProcessManager.LSPProcess;
 
@@ -32,9 +56,7 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
 @RunWith(PowerMockRunner.class)
-@PrepareForTest( { LangServerCtx.class, LanguageServerWSEndPoint.class } )
-
-
+@PrepareForTest( { LangServerCtx.class, LanguageServerWSEndPoint.class, HttpClients.class } )
 
 public class LanguageServerWSEndPointTest {
 	
@@ -55,6 +77,47 @@ public class LanguageServerWSEndPointTest {
 	
 	@Mock
 	static LSPProcessManager.LSPProcess lspProcessMock;
+	
+	static CloseableHttpClient dummyHttpClient = new CloseableHttpClient() {
+
+		public String regData;
+
+		@Override
+		public String execute(HttpUriRequest post, ResponseHandler handler) {
+			try {
+				InputStream contStream = ((HttpEntityEnclosingRequest)post).getEntity().getContent();
+				try (BufferedReader buffer = new BufferedReader(new InputStreamReader(contStream))) {
+		            this.setRegData(URLDecoder.decode(buffer.readLine(),"UTF-8"));
+		        } 
+			} catch (UnsupportedOperationException | IOException e) {
+				// Never happens - simulated
+				return "ERR";
+			}
+			return "OK";
+		}
+		
+		@Override
+		public ClientConnectionManager getConnectionManager() { return null; }
+
+		@Override
+		public HttpParams getParams() { return null; }
+
+		@Override
+		public void close() throws IOException {}
+
+		@Override
+		protected CloseableHttpResponse doExecute(HttpHost arg0, HttpRequest arg1, HttpContext arg2) throws IOException, ClientProtocolException { return null; }
+
+		public String getRegData() {
+			return regData;
+		}
+
+		public void setRegData(String regData) {
+			this.regData = regData;
+		}
+		
+	};
+	
 	
 	static String TEST_MESSAGE =  "Content-Length: 113\r\n\r\n" +
 			"{\r\n" +
@@ -132,8 +195,6 @@ public class LanguageServerWSEndPointTest {
 		      }})
 		  .when(procManagerMock).cleanProcess(any(), any());
 		
-
-
 		cut = new LanguageServerWSEndPoint();
 
 		setInternalState(cut, "langContexts", testUtil.getCtx());
@@ -155,8 +216,43 @@ public class LanguageServerWSEndPointTest {
 
 	@Test
 	public void testOnOpen() {
+		// HttpClient for WSSynchronize notification
+		mockStatic(HttpClients.class);
+		expect(HttpClients.createSystem()).andReturn(dummyHttpClient);
+		replayAll();
+
+		doReturn("/").when(lspProcessMock).getProjPath();
 		cut.onOpen("testWS", "aLang", testSession, endpointConfig);
 		assertEquals(READY_MESSAGE, readyMessage);
+		assertEquals("Wrong registration data ", "/:aLang=/testWS/aLang", getInternalState(dummyHttpClient, "regData"));
+
+	}
+
+	@Test
+	public void testOnOpenP() {
+		// HttpClient for WSSynchronize notification
+		mockStatic(HttpClients.class);
+		expect(HttpClients.createSystem()).andReturn(dummyHttpClient);
+		replayAll();
+
+		doReturn("/myProj/").when(lspProcessMock).getProjPath();
+		cut.onOpen("testWS~myProj", "aLang", testSession, endpointConfig);
+		assertEquals(READY_MESSAGE, readyMessage);
+		assertEquals("Wrong registration data ", "/myProj/:aLang=/testWS~myProj/aLang", getInternalState(dummyHttpClient, "regData"));
+	}
+
+	@Test
+	public void testOnOpenM() {
+		// HttpClient for WSSynchronize notification
+		mockStatic(HttpClients.class);
+		expect(HttpClients.createSystem()).andReturn(dummyHttpClient);
+		replayAll();
+
+		doReturn("/myProj/myModule/").when(lspProcessMock).getProjPath();
+		cut.onOpen("testWS~myProj~myModule", "aLang", testSession, endpointConfig);
+		assertEquals(READY_MESSAGE, readyMessage);
+		assertEquals("Wrong registration data ", "/myProj/myModule/:aLang=/testWS~myProj~myModule/aLang", getInternalState(dummyHttpClient, "regData"));
+
 	}
 
 	@Test
@@ -184,6 +280,18 @@ public class LanguageServerWSEndPointTest {
 	    	Field f = c.getDeclaredField(field);
 	        f.setAccessible(true);
 	        f.set(target, value);
+	    } catch (Exception e) {
+	        throw new RuntimeException(
+	            "Unable to set internal state on a private field. [...]", e);
+	    }
+	}
+
+	public static Object getInternalState(Object target, String field) {
+	    Class<?> c = target.getClass();
+	    try {
+	    	Field f = c.getDeclaredField(field);
+	        f.setAccessible(true);
+	        return f.get(target);
 	    } catch (Exception e) {
 	        throw new RuntimeException(
 	            "Unable to set internal state on a private field. [...]", e);
