@@ -18,6 +18,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.apache.http.HttpEntity;
@@ -199,12 +200,16 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 	
 	private void registerWSSyncListener(String procKey, String listenerPath, boolean onOff) {
 		String diToken = System.getenv(DI_TOKEN_ENV);
+		if (diToken == null) {
+			LOG.log(Level.WARNING, "WS notification listener registration skipped - missed Token");
+			diToken = "";
+		}
         try (CloseableHttpClient httpclient = HttpClients.createSystem()) {
         	assert procKey != null;
         	assert listenerPath != null;
             HttpPost post = new HttpPost("http://localhost:8080/WSSynchronization");
             post.addHeader("Register-lsp", onOff ? "true" : "false");
-            post.addHeader(DI_TOKEN_ENV,diToken != null ? diToken : "");
+            post.addHeader(DI_TOKEN_ENV,diToken);
             List<NameValuePair> nameValuePairs = new ArrayList<>(1);   
             nameValuePairs.add(new BasicNameValuePair(procKey, listenerPath));
             post.setEntity(new UrlEncodedFormEntity(nameValuePairs));

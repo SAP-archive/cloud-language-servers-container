@@ -98,6 +98,14 @@ public class WSSynchronization extends HttpServlet {
 
     }
 
+	protected String getSaveDir() {
+		return this.wsSaveDir;
+	}
+
+	protected void setSaveDir(String saveDir) {
+		this.wsSaveDir = saveDir;
+	}
+
 	/**
 	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse response)
 	 */
@@ -106,7 +114,7 @@ public class WSSynchronization extends HttpServlet {
 		append(" for curl -i -X PUT -H \"Content-Type: multipart/form-data\" -F \"file=@<YourZipFile>\"  https://<application>/WSSynchronization/projectxxx");
 	}
 
-	private void initialSync(HttpServletRequest request, HttpServletResponse response, String workspaceRoot, String workspaceSaveDir) throws IOException, ServletException {
+	void initialSync(HttpServletRequest request, HttpServletResponse response, String workspaceRoot, String workspaceSaveDir) throws IOException, ServletException {
 		// Expected: one part containing zip 
 		try {
 			Part part = request.getParts().iterator().next();
@@ -236,6 +244,7 @@ public class WSSynchronization extends HttpServlet {
 			changeObserver = new WSChangeObserver(ChangeType.CHANGE_DELETED, lspDestPath);
 			changeObserver.onChangeReported("ws" + File.separator + artifactRelPath, artifactPath.substring(artifactPath.lastIndexOf('.') + 1), artifactPath);
 			notifyLSP(changeObserver);
+			response.setStatus(HttpServletResponse.SC_OK);
 		}
 	}
 

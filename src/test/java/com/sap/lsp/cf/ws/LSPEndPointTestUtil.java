@@ -28,7 +28,7 @@ public final class LSPEndPointTestUtil {
 		this.workdir = Files.createTempDirectory(basePath, "workdir");
 		Path launcher = Files.createFile(new File(basePath.toString() + "/Launcher.sh").toPath());
 		// Return Log msg
-		return String.format("TEST Env:\nBasePath=%s\nWordir=%s\nLauncher script=%s\n ",
+		return String.format("TEST Env:\nBasePath=%s\nWorkdir=%s\nLauncher script=%s\n ",
 				basePath.toString(), workdir.toString(), launcher.toString());
 		
 	}
