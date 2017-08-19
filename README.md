@@ -1,14 +1,13 @@
-# LSPServerCF
-Responsible for:
+# Responsibilities
 - Converting socket/stdin/stdout/etc. into websocket
 - Start and stop LSP specific implementations per project/language
-- Sync workspace changes from DI + call LSP protocol relevant calls accordingly
+- Sync workspace changes and call LSP protocol relevant notifications accordingly
 - Manage security tokens life cycle 
 
 ## Debug in CF
 
 - http://lmgtfy.com/?q=what+is+my+ip
-- Update environemnt variables in cf: `JAVA-OPTS` (correct the IP) and `JBP_CONFIG_DEBUG` according to https://github.wdf.sap.corp/DevX/LSPServerCF/blob/master/manifest.yaml#L12-L13. If running from DI populate these environment variables using the debugger (in `LanguageServerInstaller`)
+- Update environemnt variables in cf: `JAVA-OPTS` (correct the IP) and `JBP_CONFIG_DEBUG` according to https://github.com/SAP/cloud-language-servers-container/blob/master/manifest.yaml#L12-L13. If push is done from another server populate these environment variables using the debugger
 - After push to CF run from terminal: `cf ssh -N -T -L 8000:localhost:8000 <app-name>`
 - Use your favorite IDE to remote debug localhost with port 8000
 
@@ -27,13 +26,8 @@ Responsible for:
 * Build
   mvn install
   
-## Run LSPServerCF locally
+## Run server locally
   mvn jetty:run -Pintegration-test
 
 # CI
-This project is using [SAP Travis CI](https://travis-ci.mo.sap.corp/DevX/LSPServerCF).
-
-# Release Build
-* Create a pull request from DevX/LSPServer to NAAS4Cloud/LSPServerCF
-* Run [Release Job](https://xmake-dev.wdf.sap.corp:8443/job/NAAS4Cloud-LSPServerCF-OD-linuxx86_64_indirectshipment/) 
- *Choose option **Build and Deploy***
+This project is using [Travis CI](TODO).
