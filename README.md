@@ -10,6 +10,9 @@ This server is a wrapper that among other responsibilities transforms the low le
 
 The server is designed to run in a container dedicated for a single user workspace. Specific language servers implementations are configured via environemnt variables.
 
+A buildpack for running the server on CloudFoundry can be found in https://github.com/SAP/cf-language-server-buildpack.
+
+
 # Responsibilities
 - Converting socket/stdin/stdout/etc. into websocket
 - Start and stop LSP specific implementations per project/language
