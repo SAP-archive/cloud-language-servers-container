@@ -116,9 +116,9 @@ public class WSSynchronization extends HttpServlet {
 
 	void initialSync(HttpServletRequest request, HttpServletResponse response, String workspaceRoot, String workspaceSaveDir) throws IOException, ServletException {
 		// Expected: one part containing zip 
-		try {
-			Part part = request.getParts().iterator().next();
-			syncWorkspace(part.getInputStream(), new File(workspaceSaveDir));
+		Part part = request.getParts().iterator().next();
+		try (final InputStream inputStream = part.getInputStream()) {
+			syncWorkspace(inputStream, new File(workspaceSaveDir));
 			response.getWriter().append(workspaceRoot);
 			response.setStatus(HttpServletResponse.SC_CREATED);
 		} catch (NoSuchElementException ePart) {
