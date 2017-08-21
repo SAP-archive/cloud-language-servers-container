@@ -24,7 +24,7 @@ public class LSPProcessManager {
 	private static final String ENV_PIPE_IN = "pipein";
 	private static final String ENV_IPC_CLIENT_PORT = "clientport";
 	
-	private static final String WSKEY_DELIMITER = "~";
+	private static final String WS_KEY_DELIMITER = "~";
 
 
 //	public static final String DEBUG_CLIENT = "debugclient";
@@ -454,26 +454,26 @@ public class LSPProcessManager {
 
 	public synchronized LSPProcess createProcess(String wsKey, String lang, RemoteEndpoint.Basic remoteEndpoint) throws LSPException {
 
-		String procKey = processKey(wsKey,lang);
+		String procKey = processKey(wsKey, lang);
 		String rpcType = langContexts.get(lang).getRpcType();
-		String wsKeyElem[] = wsKey.split(WSKEY_DELIMITER,3);
+		String wsKeyElem[] = wsKey.split(WS_KEY_DELIMITER,3);
 		
-		LSPProcess newlsp = new LSPProcess(wsKeyElem, langContexts.get(lang).getProcessBuilder(wsKeyElem), remoteEndpoint);
+		LSPProcess lspProcess = new LSPProcess(wsKeyElem, langContexts.get(lang).getProcessBuilder(wsKeyElem), remoteEndpoint);
 		switch(rpcType) {
 		case ENV_IPC_SOCKET:
-			socketEnv(newlsp, LangServerCtx.LangPrefix(lang));
+			socketEnv(lspProcess, LangServerCtx.LangPrefix(lang));
 			break;
 		case ENV_IPC_PIPES:
-			pipeEnv(newlsp, LangServerCtx.LangPrefix(lang));
+			pipeEnv(lspProcess, LangServerCtx.LangPrefix(lang));
 			break;
 		case ENV_IPC_CLIENT:
-			clientSocketEnv(newlsp, LangServerCtx.LangPrefix(lang));
+			clientSocketEnv(lspProcess, LangServerCtx.LangPrefix(lang));
 			break;
 		default:
-			streamEnv(newlsp);
+			streamEnv(lspProcess);
 		}
-		lspProcesses.put(procKey, newlsp);
-		return newlsp;
+		lspProcesses.put(procKey, lspProcess);
+		return lspProcess;
 	}
 
 	public static String processKey(String ws, String lang) {
