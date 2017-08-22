@@ -18,34 +18,30 @@ In order to build and run cloud-language-servers-container in CloudFoundry follo
 * Download [Maven](https://maven.apache.org/download.cgi)
 * Install [Cloud Foundry Command Line Interface](http://docs.cloudfoundry.org/cf-cli/)
 * From command line:
- * Change dir to the project root folder:
- * Run `mvn clean instll`
- * Use `cf login` to login to cloud foundry endpoint, org and space
- * Run `cf push`
- * An application named `lsp` should be created with a running cloud-language-servers-container 
+-* Change dir to the project root folder:
+-* Run `mvn clean instll`
+-* Use `cf login` to login to cloud foundry endpoint, org and space
+-* Run `cf push`
+* An application named `lsp` should be created with a running cloud-language-servers-container 
 
-# Development Environment
+# Configuration
 
-## Debug in CF
+## Debug the application in CloudFoundry
 
 - Find your IP
 - Update environemnt variables in cf: `JAVA-OPTS` (correct the IP) and `JBP_CONFIG_DEBUG` according to https://github.com/SAP/cloud-language-servers-container/blob/master/manifest.yaml#L12-L13. If push is done from another server populate these environment variables using the debugger
 - After push to CF run from terminal: `cf ssh -N -T -L 8000:localhost:8000 <app-name>`
 - Use your favorite IDE to remote debug localhost with port 8000
 
-
 ## Local Integration Test in Windows
 Mocha integration tests are dependent on ruby mock language server.
 
 * Set variables in user env for all variables configured in [travis](https://github.com/SAP/cloud-language-servers-container/edit/master/.travis.yml)
 * install ruby using [RubyInstaller](https://rubyinstaller.org/downloads/)
-* mvn install -Pintegration-test
+* `mvn install -Pintegration-test`
   
 ## Run server locally
-  mvn jetty:run -Pintegration-test
-
-# CI
-This project is using [Travis CI](TODO).
+  `mvn jetty:run -Pintegration-test`
 
 # Limitations
 
