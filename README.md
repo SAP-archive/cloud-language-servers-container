@@ -17,11 +17,9 @@ In order to build and run cloud-language-servers-container in CloudFoundry follo
 
 * Download [Maven](https://maven.apache.org/download.cgi)
 * Install [Cloud Foundry Command Line Interface](http://docs.cloudfoundry.org/cf-cli/)
-* From command line:
--* Change dir to the project root folder:
--* Run `mvn clean instll`
--* Use `cf login` to login to cloud foundry endpoint, org and space
--* Run `cf push`
+* Run `mvn clean instll`
+* Run `cf login` to login to cloud foundry endpoint, org and space
+* Run `cf push`
 * An application named `lsp` should be created with a running cloud-language-servers-container 
 
 # Configuration
