@@ -22,7 +22,7 @@ In order to build and run cloud-language-servers-container in CloudFoundry follo
 * Run `cf push`
 * An application named `lsp` should be created with a running cloud-language-servers-container 
 
-# Configuration
+# Development Environment
 
 ## Debug the application in CloudFoundry
 
