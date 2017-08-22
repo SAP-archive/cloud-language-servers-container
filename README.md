@@ -12,7 +12,7 @@ The [language server protocol](https://github.com/Microsoft/language-server-prot
 ## Requirements
 cloud-language-servers-container should run in a JEE container such as [Tomcat](https://tomcat.apache.org/) or [Jetty](http://www.eclipse.org/jetty/).
 cloud-language-servers-container integration tests require ruby installation (see below). 
-For integration with CloudFoundry there should be an available end point, org and space in CloudFoundry to deploy there the server as a Java application.
+For integration with [CloudFoundry](http://www.cloudfoundry.org) there should be an available end point, org and space in CloudFoundry to deploy there the server as a Java application.
 
 # Download and Installation
 
