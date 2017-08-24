@@ -5,7 +5,7 @@ env:
   - lspservers=java,cdx DiToken=THEDITOKEN basedir=$TRAVIS_BUILD_DIR/src/test/ LSPJAVA_workdir=util/ LSPCDX_workdir=util/ LSPJAVA_exec=util/EchoLauncher.sh LSPCDX_exec=util/EchoLauncher2.sh LSPJAVA_protocol=socket LSPJAVA_inport=8991 LSPJAVA_outport=8990 LSPJAVA_STDIN_PORT=8991 LSPJAVA_STDOUT_PORT=8990 LSPCDX_protocol="socket-client" LSPCDX_clientport=8765 
 
 before_install:
-  - curl -o 'settings.xml' 'http://nexus.wdf.sap.corp:8081/nexus/service/local/templates/settings/LeanDI/content'
+  - curl -o 'settings.xml' 'https://raw.githubusercontent.com/SAP/cf-language-server-buildpack/master/resources/language_server_bin_exec_jdt/.m2'
 
 script:
   - mvn clean install -Pintegration-test -s settings.xml
