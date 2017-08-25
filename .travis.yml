@@ -10,8 +10,9 @@ before_install:
 script:
   - mvn clean install -Pintegration-test -s settings.xml
 
-deploy:
-  - provider: script
-    script: mvn deploy
-    on:
-      branch: master
+#deploy:
+#  - provider: script
+#    script: mvn deploy
+#    on:
+#      branch: master
+
