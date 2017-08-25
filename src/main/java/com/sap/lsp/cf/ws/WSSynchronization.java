@@ -1,5 +1,9 @@
 package com.sap.lsp.cf.ws;
 
+import com.sap.lsp.cf.ws.WSChangeObserver.ChangeType;
+import com.sap.lsp.cf.ws.WSChangeObserver.LSPDestination;
+import org.apache.commons.io.FilenameUtils;
+
 import javax.json.*;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.MultipartConfig;
@@ -8,10 +12,6 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.Part;
-
-import com.sap.lsp.cf.ws.WSChangeObserver.ChangeType;
-import com.sap.lsp.cf.ws.WSChangeObserver.LSPDestination;
-
 import java.io.*;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -19,11 +19,7 @@ import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
@@ -48,13 +44,13 @@ public class WSSynchronization extends HttpServlet {
 	private String wsSaveDir = null;
 	private WebSocketClient wsLSP = null;
 	private String saveDir;
-	
+
 	private static final int CHANGE_CREATED = 1;
 	private static final int CHANGE_CHANGED = 2;
 	private static final int CHANGE_DELETED = 3;
-	
-	private Map<String, LSPDestination> lspDestPath = new ConcurrentHashMap<>(); 
-       
+
+	private Map<String, LSPDestination> lspDestPath = new ConcurrentHashMap<>();
+
     /**
      * @see HttpServlet#HttpServlet()
      */
@@ -115,10 +111,10 @@ public class WSSynchronization extends HttpServlet {
 	}
 
 	void initialSync(HttpServletRequest request, HttpServletResponse response, String workspaceRoot, String workspaceSaveDir) throws IOException, ServletException {
-		// Expected: one part containing zip 
-		try {
-			Part part = request.getParts().iterator().next();
-			syncWorkspace(part.getInputStream(), new File(workspaceSaveDir));
+		// Expected: one part containing zip
+		Part part = request.getParts().iterator().next();
+		try (final InputStream inputStream = part.getInputStream()) {
+			syncWorkspace(inputStream, new File(workspaceSaveDir));
 			response.getWriter().append(workspaceRoot);
 			response.setStatus(HttpServletResponse.SC_CREATED);
 		} catch (NoSuchElementException ePart) {
@@ -142,9 +138,10 @@ public class WSSynchronization extends HttpServlet {
 
 	private void addNewFiles(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
 		String artifactRelPath;
-		File destination;List<String> extracted = new ArrayList<>();
+		List<String> extracted = new ArrayList<>();
 		artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1 );
-		destination = new File(this.saveDir + artifactRelPath);
+		artifactRelPath = FilenameUtils.normalize(artifactRelPath);
+		File destination = new File(this.saveDir + artifactRelPath);
 		if (destination.exists()) {
 			response.setContentType("application/json");
 			response.getWriter().append(String.format("{ \"error\": \"already exists %s\"}", destination.getPath()));
@@ -152,11 +149,11 @@ public class WSSynchronization extends HttpServlet {
 			return;
 		}
 		// Expected: one part containing zip
-		try{ 
+		try{
 			Part part = request.getParts().iterator().next();
 			WSChangeObserver changeObserver = new WSChangeObserver(ChangeType.CHANGE_CREATED, lspDestPath);
-			destination.getParentFile().mkdirs();
-			if ( destination.createNewFile() ) {
+            destination.getParentFile().mkdirs();
+            if (destination.createNewFile()) {
 				extracted.addAll(extract(part.getInputStream(), destination, artifactRelPath, changeObserver));
 				notifyLSP(changeObserver);
 			}
@@ -181,26 +178,27 @@ public class WSSynchronization extends HttpServlet {
 	 * @see HttpServlet#doPut(HttpServletRequest request, HttpServletResponse response)
 	 */
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		
+
 		// Check if it is LSP registration
 		String lspReg = request.getHeader("Register-lsp");
 		if ( lspReg != null ) {
 			handleLSPDest(Boolean.parseBoolean(lspReg), request.getReader());
 			return;
 		}
-		
+
 		// Otherwise process data passed from DI
 		String artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1);
+		artifactRelPath = FilenameUtils.normalize(artifactRelPath);
 		String artifactPath = this.saveDir + artifactRelPath;
 		List<String> extracted = new ArrayList<>();
 		WSChangeObserver changeObserver = null;
-		
+
 		File destination = new File(artifactPath);
 		// Expected: one part containing zip
 
-		try{ 
+		try{
 			Part part = request.getParts().iterator().next();
-		
+
 			if ( destination.exists() && !destination.isDirectory()) {
 				changeObserver = new WSChangeObserver(ChangeType.CHANGE_UPDATED, lspDestPath);
 				extracted.addAll(extract(part.getInputStream(), destination, artifactRelPath, changeObserver));
@@ -225,6 +223,7 @@ public class WSSynchronization extends HttpServlet {
 	 */
 	protected void doDelete(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		String artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1);
+		artifactRelPath = FilenameUtils.normalize(artifactRelPath);
 		String artifactPath = this.saveDir + artifactRelPath;
 		List<String> deleted  = new ArrayList<>();
 		WSChangeObserver changeObserver = null;
@@ -319,13 +318,13 @@ public class WSSynchronization extends HttpServlet {
 		}
 
 	}
-	
+
 	private List<String> extract(InputStream inputstream, File destination, String zipPath, WSChangeObserver changeObserver) {
         byte[] buf = new byte[1024];
         ZipEntry zipentry;
         List<String> extracted = new ArrayList<>();
         String wsKey = "ws" + File.separator + zipPath;
-        
+
 
         try (ZipInputStream zipinputstream = new ZipInputStream(inputstream)) {
 			zipentry = zipinputstream.getNextEntry();
@@ -349,16 +348,16 @@ public class WSSynchronization extends HttpServlet {
 		            changeObserver.onChangeReported(wsKey, filePath.substring(filePath.lastIndexOf('.') + 1), filePath);
 		            break;
 		        }
-		
+
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
 			LOG.warning("UNZIP error: " + e.toString());
 		}
-        
+
 		return extracted;
 	}
-	
+
 	private String buildLSPNotification(int type, List<String> artifacts) {
 		JsonArrayBuilder changes = Json.createArrayBuilder();
 		for (String sUrl: artifacts) {
@@ -380,9 +379,9 @@ public class WSSynchronization extends HttpServlet {
 			String message = buildLSPNotification(changeObserver.getType(), changeObserver.getArtifacts(dest));
 			dest.getWebSocketClient().sendNotification(message);
 		}
-		
+
 	}
-	
+
 	private void handleLSPDest(boolean bReg, BufferedReader reader) {
 		try {
 			String pathMap = URLDecoder.decode(reader.readLine(),"UTF-8");
@@ -399,8 +398,8 @@ public class WSSynchronization extends HttpServlet {
 		} catch (IOException e) {
 			LOG.severe("WS Sync - can't register LSP destination for notifications due to " + e.getMessage());
 		}
-		
-		
+
+
 	}
 
 
