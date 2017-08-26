@@ -1,9 +1,34 @@
 package com.sap.lsp.cf.ws;
 
-import static org.junit.Assert.*;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.*;
+import com.sap.lsp.cf.ws.LSPProcessManager.LSPProcess;
+import org.apache.http.HttpEntityEnclosingRequest;
+import org.apache.http.HttpHost;
+import org.apache.http.HttpRequest;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.ResponseHandler;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.conn.ClientConnectionManager;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.params.HttpParams;
+import org.apache.http.protocol.HttpContext;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 
+import javax.websocket.CloseReason;
+import javax.websocket.EndpointConfig;
+import javax.websocket.RemoteEndpoint;
+import javax.websocket.Session;
+import javax.websocket.server.HandshakeRequest;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,45 +40,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
-import javax.websocket.CloseReason;
-import javax.websocket.EndpointConfig;
-import javax.websocket.RemoteEndpoint;
-import javax.websocket.Session;
-import javax.websocket.server.HandshakeRequest;
-
-import org.apache.http.HttpHost;
-import org.apache.http.HttpRequest;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.ResponseHandler;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.conn.ClientConnectionManager;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.params.HttpParams;
-import org.apache.http.protocol.HttpContext;
-import org.apache.http.HttpEntityEnclosingRequest;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
 import static org.easymock.EasyMock.expect;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
 import static org.powermock.api.easymock.PowerMock.mockStatic;
 import static org.powermock.api.easymock.PowerMock.replayAll;
-import static org.powermock.api.easymock.PowerMock.verifyAll;
-
-import com.sap.lsp.cf.ws.LSPProcessManager.LSPProcess;
-
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 
 @RunWith(PowerMockRunner.class)
 @PrepareForTest( { LangServerCtx.class, LanguageServerWSEndPoint.class, HttpClients.class } )
@@ -62,25 +57,23 @@ public class LanguageServerWSEndPointTest {
 	
 	private static final Logger LOG = Logger.getLogger(LanguageServerWSEndPointTest.class.getName());
 	
-	static LanguageServerWSEndPoint cut = null;
+	private static LanguageServerWSEndPoint cut = null;
 	
 	@Mock
-	static Session testSession = null;
+	private static Session testSession = null;
 	
 	@Mock
-	static EndpointConfig endpointConfig;
+	private static EndpointConfig endpointConfig;
 	
 	@Mock
-	static RemoteEndpoint.Basic remoteEndpointMock;
-	
-	static LSPProcessManager procManagerMock = null;
-	
-	@Mock
-	static LSPProcessManager.LSPProcess lspProcessMock;
-	
-	static CloseableHttpClient dummyHttpClient = new CloseableHttpClient() {
+	private static RemoteEndpoint.Basic remoteEndpointMock;
 
-		public String regData;
+	@Mock
+	private static LSPProcessManager.LSPProcess lspProcessMock;
+	
+	private static CloseableHttpClient dummyHttpClient = new CloseableHttpClient() {
+
+		String regData;
 
 		@Override
 		public String execute(HttpUriRequest post, ResponseHandler handler) {
@@ -112,14 +105,14 @@ public class LanguageServerWSEndPointTest {
 			return regData;
 		}
 
-		public void setRegData(String regData) {
+		void setRegData(String regData) {
 			this.regData = regData;
 		}
 		
 	};
 	
 	
-	static String TEST_MESSAGE =  "Content-Length: 113\r\n\r\n" +
+	private static String TEST_MESSAGE =  "Content-Length: 113\r\n\r\n" +
 			"{\r\n" +
 			"\"jsonrpc\": \"2.0\",\r\n" +
 			"\"id\" : \"2\",\r\n" +
@@ -128,48 +121,41 @@ public class LanguageServerWSEndPointTest {
 			"\"query\": \"ProductService*\"\r\n" +
 			"}\r\n}";
 	
-	static String READY_MESSAGE = "Content-Length: 45\r\n\r\n" +
+	private static String READY_MESSAGE = "Content-Length: 45\r\n\r\n" +
 			"{\"jsonrpc\": \"2.0\",\"method\": \"protocol/Ready\"}";
 	
-	static String readyMessage;
-	static String testMessage;
-	static boolean cleanUpCall;
+	private static String readyMessage;
+	private static String testMessage;
+	private static boolean cleanUpCall;
 
-	private static LSPEndPointTestUtil testUtil;
-	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		
-
-		testUtil = new LSPEndPointTestUtil();
+		LSPEndPointTestUtil testUtil = new LSPEndPointTestUtil();
 		String log = testUtil.createInfra();
 		LOG.info(log);
 		testUtil.MockServerContext();		
 		
-		Map<String, List<String>> reqParam = new HashMap<String,List<String>>();
+		Map<String, List<String>> reqParam = new HashMap<>();
 		testSession = Mockito.mock(Session.class);
 		Mockito.when(testSession.getRequestParameterMap()).thenReturn(reqParam);
 		Mockito.when(testSession.getId()).thenReturn("0");
 		Mockito.when(testSession.getNegotiatedSubprotocol()).thenReturn("access_token");
 		
 		remoteEndpointMock = Mockito.mock(RemoteEndpoint.Basic.class);
-		
-		remoteEndpointMock = Mockito.mock(RemoteEndpoint.Basic.class); 
-		Mockito.doAnswer(new Answer<Void>() {
-		      public Void answer(InvocationOnMock invocation) {
-		          Object readyMsg = invocation.getArguments()[0];
-		          readyMessage = (String)readyMsg;
-		          return null;
-		      }})
-		  .when(remoteEndpointMock).sendText(any());
+		remoteEndpointMock = Mockito.mock(RemoteEndpoint.Basic.class);
+		Mockito.doAnswer((Answer<Void>) invocation -> {
+            Object readyMsg = invocation.getArguments()[0];
+            readyMessage = (String)readyMsg;
+            return null;
+        }).when(remoteEndpointMock).sendText(any());
 
 		Mockito.when(testSession.getBasicRemote()).thenReturn(remoteEndpointMock);
 		
 		endpointConfig = Mockito.mock(EndpointConfig.class);
 		Map<String,Object> reqProtocolMap = Collections.singletonMap(HandshakeRequest.SEC_WEBSOCKET_PROTOCOL, Collections.singletonList("access_token,12345"));
 		Mockito.when(endpointConfig.getUserProperties()).thenReturn(reqProtocolMap);
-		
-		procManagerMock = Mockito.mock(LSPProcessManager.class);
+
+		LSPProcessManager procManagerMock = Mockito.mock(LSPProcessManager.class);
 		lspProcessMock = Mockito.mock(LSPProcess.class);
 		doReturn(lspProcessMock).when(procManagerMock).createProcess(any(), any(), any());
 		doReturn(lspProcessMock).when(procManagerMock).getProcess(any());
@@ -187,13 +173,10 @@ public class LanguageServerWSEndPointTest {
 		      }})
 		  .when(lspProcessMock).enqueueCall(any());
 		
-		// nClose() -> procManager.cleanProcess
-		Mockito.doAnswer(new Answer<Void>() {
-		      public Void answer(InvocationOnMock invocation) {
-		    	  cleanUpCall = true;
-		          return null;
-		      }})
-		  .when(procManagerMock).cleanProcess(any(), any());
+		Mockito.doAnswer((Answer<Void>) invocation -> {
+            cleanUpCall = true;
+            return null;
+        }).when(procManagerMock).cleanProcess(any(), any());
 		
 		cut = new LanguageServerWSEndPoint();
 
@@ -205,7 +188,6 @@ public class LanguageServerWSEndPointTest {
 
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
-		
 		//PowerMockito.
 	}
 
@@ -239,6 +221,13 @@ public class LanguageServerWSEndPointTest {
 		cut.onOpen("testWS~myProj", "aLang", testSession, endpointConfig);
 		assertEquals(READY_MESSAGE, readyMessage);
 		assertEquals("Wrong registration data ", "/myProj/:aLang=/testWS~myProj/aLang", getInternalState(dummyHttpClient, "regData"));
+	}
+
+	@Test
+	public void testIllegalWorkspace() throws IOException {
+		final Session session = Mockito.mock(Session.class);
+		cut.onOpen("testWS&~myProj", "aLang", session, endpointConfig);
+		Mockito.verify(session, times(1)).close(any());
 	}
 
 	@Test

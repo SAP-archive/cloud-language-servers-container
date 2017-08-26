@@ -1,10 +1,7 @@
 package com.sap.lsp.cf.ws;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Logger;
 
 public class LangServerCtx extends HashMap<String,String> {
@@ -17,16 +14,11 @@ public class LangServerCtx extends HashMap<String,String> {
 	public static final String ENV_LSP_WORKDIR = "workdir"; 
 	public static final String ENV_LAUNCHER = "exec";
 	public static final String ENV_RPCTYPE = "protocol";
-	
-	private final String lang;
-	private String launcherScript;
-	private String workdir;
 
 	private static final Logger LOG = Logger.getLogger(LangServerCtx.class.getName());
 
 	public LangServerCtx(String lang) {
-		
-		this.lang = lang;
+
 		String prefix = LangPrefix(lang);
 		System.getenv().forEach((envVar, value)->{
 			// JAVA_HOME - Special case
@@ -41,21 +33,20 @@ public class LangServerCtx extends HashMap<String,String> {
 	}
 	
 	public ProcessBuilder getProcessBuilder(String[] wsKeyElem) throws LSPException {
-
 		File wDir;
-		
+		String launcherScript;
 		if ( !this.containsKey(ENV_LAUNCHER) || !this.containsKey(ENV_LSP_WORKDIR)) {
-			LOG.warning("No workdir or launcher script configured");
+			LOG.warning("No work dir or launcher script configured");
 			throw new LSPConfigurationException();
 		} else {
-			this.launcherScript = BASE_DIR + get(ENV_LAUNCHER);
+			launcherScript = BASE_DIR + get(ENV_LAUNCHER);
 			if (!(new File(launcherScript).exists()) ) {
 				LOG.warning("No launcher script exists " + launcherScript);
 				throw new LSPConfigurationException();
 			}
-			LOG.info("LSP luancher is: " + launcherScript);
-			
-			this.workdir = BASE_DIR + get(ENV_LSP_WORKDIR);
+			LOG.info("LSP launcher is: " + launcherScript);
+
+			String workdir = BASE_DIR + get(ENV_LSP_WORKDIR);
 			wDir = new File(workdir);
 			if ( !wDir.exists() || !wDir.isDirectory() ) {
 				LOG.warning("No working directory exists");
@@ -70,9 +61,7 @@ public class LangServerCtx extends HashMap<String,String> {
 		String scriptExec = System.getProperty("os.name").substring(0,3).equalsIgnoreCase("win") ? "cmd.exe /C" : "/bin/bash";
 		cmd.add(scriptExec);
 		cmd.add(launcherScript);
-		for(String wsPar : wsKeyElem) {
-			cmd.add(wsPar);
-		}
+		Collections.addAll(cmd, wsKeyElem);
 
 		ProcessBuilder pb = new ProcessBuilder(cmd);
 		pb.directory(wDir);

@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.NameValuePair;
@@ -27,7 +28,6 @@ import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.ResponseHandler;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
@@ -37,7 +37,7 @@ import org.apache.http.util.EntityUtils;
 @ServerEndpoint(value="/LanguageServer/{ws}/{lang}", subprotocols={"access_token","local_access"}, configurator = GetHttpSessionConfigurator.class)
 public class LanguageServerWSEndPoint implements ServletContextListener {
 
-	public static final String ENV_LSPSERVERS = "lspservers";
+	public static final String ENV_LSP_SERVERS = "lspservers";
 
 	private static final Logger LOG = Logger.getLogger(LanguageServerWSEndPoint.class.getName());
 	private static final String LANG_CONTEXT = "langContext";
@@ -50,8 +50,8 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 	private static final LSPProcessManager procManager = new LSPProcessManager(langContexts);
 
 	static {
-		if ( System.getenv().containsKey(ENV_LSPSERVERS)) {
-			String langs[] = System.getenv(ENV_LSPSERVERS).split(",");
+		if ( System.getenv().containsKey(ENV_LSP_SERVERS)) {
+			String langs[] = System.getenv(ENV_LSP_SERVERS).split(",");
 			for(String lang : langs) {
 				if ( lang.length() > 0) langContexts.put(lang, new LangServerCtx(lang));
 			}
@@ -66,10 +66,15 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 	@OnOpen
 	public void onOpen(@PathParam("ws") String ws, @PathParam("lang") String lang, Session session, EndpointConfig endpointConfig) {
 	    try {
-            String subprotocol = session.getNegotiatedSubprotocol();
-            if (subprotocol == null) {
-                LOG.severe("LSP: Subprotocol is required for authentication");
-                session.close(new CloseReason(CloseCodes.CANNOT_ACCEPT, "Subprotocol is required for authentication"));
+            if (!Pattern.matches("[0-9A-Za-z@.-~]+", ws)) {
+                LOG.severe("LSP: unsupported special characters in workspace argument");
+                session.close(new CloseReason(CloseCodes.CANNOT_ACCEPT, "workspace is invalid"));
+                return;
+            }
+            String subProtocol = session.getNegotiatedSubprotocol();
+            if (subProtocol == null) {
+                LOG.severe("LSP: sub-protocol is required for authentication");
+                session.close(new CloseReason(CloseCodes.CANNOT_ACCEPT, "sub-protocol is required for authentication"));
                 return;
             }
 
@@ -77,14 +82,14 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
             if (reqParam != null && reqParam.containsKey("local")) {
                 return;
             }
-            LOG.info("LSP4J: OnOpen is invoked for subprotocol " + subprotocol);
+            LOG.info("LSP4J: OnOpen is invoked for sub-protocol " + subProtocol);
 
             @SuppressWarnings("unchecked")
-            List<String> requestedPotocols = (List<String>) endpointConfig.getUserProperties()
+            List<String> requestedProtocols = (List<String>) endpointConfig.getUserProperties()
                     .get(HandshakeRequest.SEC_WEBSOCKET_PROTOCOL);
-            if (requestedPotocols != null && requestedPotocols.size() >= 0) {
-                String secWSToken = requestedPotocols.get(0);
-                if (subprotocol != null && secWSToken.startsWith(subprotocol) && secWSToken.contains(",")) {
+            if (requestedProtocols != null && requestedProtocols.size() > 0) {
+                String secWSToken = requestedProtocols.get(0);
+                if (secWSToken.startsWith(subProtocol) && secWSToken.contains(",")) {
                     try {
                         secWSToken = URLDecoder.decode((secWSToken.split(",")[1]).trim(), "UTF-8");
                         if (!validateWSSecurityToken(secWSToken)) {
@@ -93,19 +98,19 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
                             return;
                         }
                     } catch (UnsupportedEncodingException e) {
-                        LOG.severe("SUBPROTOCOL error " + e.getMessage());
-                        session.close(new CloseReason(CloseCodes.CANNOT_ACCEPT, "Subprotocol error"));
+                        LOG.severe("SUB-PROTOCOL error " + e.getMessage());
+                        session.close(new CloseReason(CloseCodes.CANNOT_ACCEPT, "Sub-protocol error"));
                         return;
                     }
                     LOG.info("Security Token " + secWSToken);
                 } else {
-                    LOG.severe("SUBPROTOCOL error ");
-                    session.close(new CloseReason(CloseCodes.CANNOT_ACCEPT, "Subprotocol error"));
+                    LOG.severe("SUB-PROTOCOL error ");
+                    session.close(new CloseReason(CloseCodes.CANNOT_ACCEPT, "Sub-protocol error"));
                     return;
                 }
             } else {
-                LOG.severe("SUBPROTOCOL error ");
-                session.close(new CloseReason(CloseCodes.CANNOT_ACCEPT, "Subprotocol error"));
+                LOG.severe("SUB-PROTOCOL error ");
+                session.close(new CloseReason(CloseCodes.CANNOT_ACCEPT, "Sub-protocol error"));
                 return;
             }
         } catch (IOException closeErr) {
@@ -113,7 +118,6 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
             LOG.severe("FATAL ERROR " + closeErr.getMessage());
             return;
         }
-
         LOG.info(String.format("LSP: create Head Process for lang %s session %s", lang, session.getId()));
 
         // set timeout
@@ -122,7 +126,6 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
         RemoteEndpoint.Basic remoteEndpointBasic = session.getBasicRemote();
 
        try {
-          
             try {
                 LSPProcess process = procManager.createProcess(ws, lang, remoteEndpointBasic);
 
@@ -176,7 +179,6 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 
 	@Override
 	public void contextInitialized(ServletContextEvent sce) {
-		//servletContext = sce.getServletContext();
 
 	}
 
@@ -191,7 +193,6 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 	private void informReady(RemoteEndpoint.Basic remote, boolean bReady) throws IOException {
 		String msg = bReady ? READY_MESSAGE : ERROR_MESSAGE;
 		String readyMsg = String.format(READY_MESSAGE_HEADER,msg.length(),msg);
-		
 		remote.sendText(readyMsg);
 	}
 	
@@ -204,7 +205,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 			LOG.log(Level.WARNING, "WS notification listener registration skipped - missed Token");
 			diToken = "";
 		}
-        try (CloseableHttpClient httpclient = HttpClients.createSystem()) {
+        try (CloseableHttpClient httpClient = HttpClients.createSystem()) {
         	assert procKey != null;
         	assert listenerPath != null;
             HttpPost post = new HttpPost("http://localhost:8080/WSSynchronization");
@@ -226,7 +227,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
                 }
             };
             LOG.info("LSP notification registration sending to " + post.getRequestLine().toString() + " with token " + diToken);
-            String responseBody = httpclient.execute(post, responseHandler);
+            String responseBody = httpClient.execute(post, responseHandler);
         } catch (IOException ex) {
             LOG.severe("WS Notification listener registration error: " + ex.getMessage());
        }
@@ -235,8 +236,8 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 
 	private boolean validateWSSecurityToken(String token) {
         Date date = new Date();
-        Date expiratioDate = new Date(Long.valueOf(System.getProperty("com.sap.lsp.cf.ws.expirationDate")));
-        return (token.equals(System.getProperty("com.sap.lsp.cf.ws.token")) && date.before(expiratioDate));
+        Date expirationDate = new Date(Long.valueOf(System.getProperty("com.sap.lsp.cf.ws.expirationDate")));
+        return (token.equals(System.getProperty("com.sap.lsp.cf.ws.token")) && date.before(expirationDate));
     }
 
 
