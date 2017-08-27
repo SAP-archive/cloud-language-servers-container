@@ -3,13 +3,13 @@
     "test": "mocha --timeout 20000"
   },
   "devDependencies": {
-    "chai": "4.0.2",
-    "mocha": "3.4.2",
-    "promise": "7.1.1",
+    "chai": "4.1.1",
+    "mocha": "3.5.0",
+    "promise": "8.0.1",
     "promise-timeout": "1.1.1",
     "request": "2.81.0",
     "request-promise": "4.2.1",
-    "ws": "3.0.0"
+    "ws": "3.1.0"
   },
   "dependencies": {
     "assert": "1.4.1"
