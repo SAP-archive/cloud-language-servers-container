@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "test": "mocha"
+    "test": "mocha --timeout 20000"
   },
   "devDependencies": {
     "chai": "4.0.2",

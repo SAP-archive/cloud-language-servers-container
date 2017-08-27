@@ -4,7 +4,7 @@ const assert = require("chai").assert;
 const fs = require('fs');
 const request = require('request');
 const path = require('path');
-const tu = require('./util/Util');
+const Util = require('./util/Util');
 
 
 const pathPrefix = "http://localhost:8080/WSSynchronization";
@@ -17,18 +17,18 @@ const COMMON_OPTIONS = {
 	}
 };
 
-describe('Sync Integration Test', function () {
+describe('Sync Integration Test - no websocket', function () {
 
 	let folderPath = "";
 	let filePath = "";
 
-    after(function () {
-        try {
-        	tu.deleteFolderRecursive(folderPath);
-        } catch (e) {
-            console.error("Error while deleting root folder " + folderPath + " due to " + e);
-        }
-    });
+	after(function () {
+		try {
+			Util.deleteFolderRecursive(folderPath);
+		} catch (e) {
+			console.error("Error while deleting root folder " + folderPath + " due to " + e);
+		}
+	});
 
     function deleteSingleFile() {
 		return new Promise(function (resolve, reject) {
@@ -81,7 +81,10 @@ describe('Sync Integration Test', function () {
 		}).then(function () {
 			// putting file that already exists should fail
 			return new Promise(function (resolve, reject) {
-				let req = request.put(pathPrefix + modulePath + '/java/test.java', COMMON_OPTIONS, function (err, res, body) {
+				let req = request.put(pathPrefix + modulePath + '/java/test.java', COMMON_OPTIONS, function (err, res) {
+					console.log("error: " + err);
+					console.log("res: " + res);
+					assert.ok(res);
 					assert.equal(res.statusCode, 403);
 					resolve(res);
 				});

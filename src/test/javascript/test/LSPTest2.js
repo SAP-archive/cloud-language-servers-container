@@ -6,12 +6,12 @@ const expect = require("chai").expect;
 const request = require('request');
 const rp = require('request-promise');
 
-var ws;
-var openPromise;
-var aSubscribers = [];
+let ws;
+let closePromise
+let openPromise;
+const aSubscribers = [];
 
-describe('Protocol test (LSP is socket server)', () => {
-	
+describe('Protocol test (LSP is socket server)', function () {
 
 	function onMessage(msg) {
 		console.log("Receiving message: " + msg);
@@ -37,18 +37,18 @@ describe('Protocol test (LSP is socket server)', () => {
 	before(function(){
 		ws = null;
 	    console.log("BEFORE - Protocol test (LSP is socket server)");
-		var d = new Date();
-		var milliSec = d.getTime() + 60 * 60 * 1000;
-	    var tokenSync = {
-		    method: "POST",
-		    uri: "http://localhost:8080/UpdateToken/?expiration=" + milliSec + "&token=12345",
-		    headers: {
-		        'DiToken': 'THEDITOKEN'
-		    },
-		    body: {},
-		    json: true
-	    };
-	    return PromiseTimeout.timeout(new Promise(function(resolve, reject){
+		const d = new Date();
+		const milliSec = d.getTime() + 60 * 60 * 1000;
+		const tokenSync = {
+			method: "POST",
+			uri: "http://localhost:8080/UpdateToken/?expiration=" + milliSec + "&token=12345",
+			headers: {
+				'DiToken': 'THEDITOKEN'
+			},
+			body: {},
+			json: true
+		};
+		return PromiseTimeout.timeout(new Promise(function(resolve, reject){
 	        openPromise = new Promise(function(openRes,openRej){
 	            aSubscribers.push({ method: "protocol/Ready", callback: function(msg){
 	            	console.log("Test - Ready received!");
@@ -57,38 +57,38 @@ describe('Protocol test (LSP is socket server)', () => {
 	        });
 		    rp(tokenSync).then(function(parsedResp) {
 		    	console.log("Open WS after Sec Token sent");
-	            var subprotocol = ["access_token", "12345"];
-	            var ws_o = new WebSocket('ws://localhost:8080/LanguageServer/ws/cdx', subprotocol);
-	            ws_o.on('open',function open(){
+				let subprotocol = ["access_token", "12345"];
+				let ws_o = new WebSocket('ws://localhost:8080/LanguageServer/ws/cdx', subprotocol);
+				ws_o.on('open',function open(){
 	                ws = ws_o;
 	                ws.on('message',onMessage);
 	                console.log("Test for ready.........");
 	                resolve();
 	            });
-				ws_o.on('close',function close() {
-					ws = null;
+				closePromise = new Promise(function(resolve) {
+					ws_o.on('close',function close(ev) {
+						console.log("Test WS closed........ due to " + ev);
+						ws = null;
+						resolve();
+					});
 				});
 
-		    }).catch(function(err){
+
+			}).catch(function(err){
 			    reject(err);
 		    });
-	    }),1000);
+	    }),10000);
 	});
 
 	after(function(){
-
-		return PromiseTimeout.timeout(new Promise(function(resolve,reject){
-			if ( ws ) {
-				ws.close();
-			}
-			resolve();
-		}), 1000
-
-		);
+		if (ws) {
+			console.log("closed by test after()");
+			ws.close();
+			return closePromise;
+		}
 	});
 
 	it('Check for open', function() {
-		this.timeout(1000);
 		return openPromise.then(function(isOpened){
 			expect(isOpened).to.be.true;
 		});
@@ -96,7 +96,6 @@ describe('Protocol test (LSP is socket server)', () => {
 	});
 
 	it('Check for Mirror',function(){
-		this.timeout(2000);
 		var testMessage = "Content-Length: 113\r\n\r\n" +
 		"{\r\n" +
 		"\"jsonrpc\": \"2.0\",\r\n" +

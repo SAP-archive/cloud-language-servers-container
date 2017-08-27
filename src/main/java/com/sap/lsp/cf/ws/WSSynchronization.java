@@ -146,17 +146,22 @@ public class WSSynchronization extends HttpServlet {
 	 * @see HttpServlet#doPut(HttpServletRequest request, HttpServletResponse response)
 	 */
 	protected void doPut(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		String servletPath = request.getServletPath();
-		String requestURI = request.getRequestURI();
-		if (servletPath.equals(requestURI))  {
-			String workspaceSaveDir = wsSaveDir != null ? wsSaveDir + "/" : SAVE_DIR;
-			initialSync(request, response, "file://" + workspaceSaveDir, workspaceSaveDir);
-		} else if (requestURI.length() > servletPath.length() )  {
-			if( !checkSync() ) {
-				response.setStatus(HttpServletResponse.SC_NO_CONTENT);
-				return;
+		try {
+			String servletPath = request.getServletPath();
+			String requestURI = request.getRequestURI();
+			LOG.info("Inside doPut with path " + requestURI);
+			if (servletPath.equals(requestURI)) {
+				String workspaceSaveDir = wsSaveDir != null ? wsSaveDir + "/" : SAVE_DIR;
+				initialSync(request, response, "file://" + workspaceSaveDir, workspaceSaveDir);
+			} else if (requestURI.length() > servletPath.length()) {
+				if (!checkSync()) {
+					response.setStatus(HttpServletResponse.SC_NO_CONTENT);
+					return;
+				}
+				addNewFiles(request, response);
 			}
-			addNewFiles(request, response);
+		} catch (Exception e) {
+			LOG.severe("doPut failed: " + e);
 		}
 	}
 
@@ -166,6 +171,7 @@ public class WSSynchronization extends HttpServlet {
 		artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1 );
 		File destination = new File(FilenameUtils.normalize(this.saveDir + artifactRelPath));
 		if (destination.exists()) {
+			LOG.info("File to be added already exist: " + destination.getPath());
 			response.setContentType("application/json");
 			response.getWriter().append(String.format("{ \"error\": \"already exists %s\"}", destination.getPath()));
 			response.setStatus(HttpServletResponse.SC_FORBIDDEN);

@@ -9,12 +9,12 @@ const fs = require('fs');
 const request = require('request');
 const rp = require('request-promise');
 const path = require('path');
-const tu = require('./util/Util');
+const Util = require('./util/Util');
 
 
 const pathPrefix = "http://localhost:8080/WSSynchronization";
 const modulePath = "/myProject/myModule";
-
+let closePromise;
 
 const COMMON_OPTIONS = {
 	headers: {
@@ -115,11 +115,14 @@ describe('Sync Integration Full loop Test', function () {
 	                ws.on('message',onMessage);
 	                console.log("Test for ready.........");
 	                resolve();
-	            })
-	            ws_o.on('close',function close(ev) {
-	            	console.log("Test WS closed........ due to " + ev);
-	                ws = null;
 	            });
+	            closePromise = new Promise(function(resolve) {
+					ws_o.on('close',function close(ev) {
+						console.log("Test WS closed........ due to " + ev);
+						ws = null;
+						resolve();
+					});
+				});
 		    }).catch(function(err){
 			    reject(err);
 		    });
@@ -128,7 +131,6 @@ describe('Sync Integration Full loop Test', function () {
     }
     
 	before(function(){
-	    this.timeout(1000);
 
 		return new Promise(function(ready, startfailed){
 			startLSP().then(function st(){
@@ -138,32 +140,34 @@ describe('Sync Integration Full loop Test', function () {
 			} );
 		});
 	});
-	
-    after(function () {
-    	ws.close();
-        try {
-        	tu.deleteFolderRecursive(folderPath);
-        } catch (e) {
-            console.error("Error while deleting root folder " + folderPath + " due to " + e);
-        }
-    });
-    
-    function deleteSingleFile() {
-    	console.log("Delete single file" + pathPrefix + modulePath + '/java/test.java');
-    	return Promise.all([
-        	new Promise(function (resolve, reject) {
-    			request.delete(pathPrefix + modulePath + '/java/test.java', COMMON_OPTIONS, function (err, res, body) {
-    				onDeleteResponse(err, res, body, resolve, reject);
-    			})
-    		}),
-    		new Promise(function (resolve, reject) {
-    	        aSubscribers.push({ method: "workspace/didChangeWatchedFiles", callback: function(oLspMsg){
-    	        	console.log("Test response delete single file - loopback received:\n" + JSON.stringify(oLspMsg));
-    	        	expect(oLspMsg,"Delete notification faillure").to.deep.equal(delete1Resp);
-    	        	resolve();
-    	        }})
-    		}),
-    	]);
+
+	after(function () {
+		if (ws) {
+			console.log("closed by test after()");
+			ws.close();
+		}
+		Util.deleteFolderRecursive(folderPath);
+		return closePromise;
+	});
+
+	function deleteSingleFile() {
+		console.log("Delete single file" + pathPrefix + modulePath + '/java/test.java');
+		return Promise.all([
+			new Promise(function (resolve, reject) {
+				request.delete(pathPrefix + modulePath + '/java/test.java', COMMON_OPTIONS, function (err, res, body) {
+					onDeleteResponse(err, res, body, resolve, reject);
+				})
+			}),
+			new Promise(function (resolve, reject) {
+				aSubscribers.push({
+					method: "workspace/didChangeWatchedFiles", callback: function (oLspMsg) {
+						console.log("Test response delete single file - loopback received:\n" + JSON.stringify(oLspMsg));
+						expect(oLspMsg, "Delete notification faillure").to.deep.equal(delete1Resp);
+						resolve();
+					}
+				})
+			}),
+		]);
     	
 
     }
@@ -194,14 +198,14 @@ describe('Sync Integration Full loop Test', function () {
         resolve(res);
     }
 
-    function onDeleteResponse(err, res, body, resolve, reject) {
-    	console.log("Delete resp: " + body);
+	function onDeleteResponse(err, res, body, resolve, reject) {
+		console.log("Delete resp: " + body);
 		assert.ok(!err);
 		assert.ok(res);
-        assert.equal(res.statusCode, 200, "Delete error ");
-        assert.ok(!fs.existsSync(filePath));
-        resolve(res);
-    }
+		assert.equal(res.statusCode, 200, "Delete error ");
+		assert.ok(!fs.existsSync(filePath));
+		resolve(res);
+	}
 
     it('Initial sync and delete file', function () {
         let zipFilePath = path.resolve(__dirname, '../resources/putTest.zip');
@@ -215,6 +219,8 @@ describe('Sync Integration Full loop Test', function () {
 			// putting file that already exists should fail
 			return new Promise(function (resolve, reject) {
 				let req = request.put(pathPrefix + modulePath + '/java/test.java', COMMON_OPTIONS, function (err, resp, body) {
+					console.log("error: " + err);
+					assert.ok(resp);
 					assert.equal(403, resp.statusCode, "Duplicate file creation err ");
 					resolve(resp);
 				});
@@ -298,7 +304,7 @@ describe('Sync Integration Full loop Test', function () {
 		        	// Clear subscriber and resolve
 		        	aSubscribers.pop();
 		        	resolve();
-		        },1000);
+		        },10000);
 
 		        aSubscribers.push({ method: "workspace/didChangeWatchedFiles", callback: function(oLspMsg){
 		        	console.log("Test create - loopback received:\n" + JSON.stringify(oLspMsg));

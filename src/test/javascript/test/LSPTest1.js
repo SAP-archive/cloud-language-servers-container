@@ -6,12 +6,12 @@ const expect = require("chai").expect;
 const request = require('request');
 const rp = require('request-promise');
 
-var ws;
-var openPromise;
-var aSubscribers = [];
+let ws;
+let closePromise;
+let openPromise;
+const aSubscribers = [];
 
-describe('Protocol test (LSP is socket client)', () => {
-
+describe('Protocol test (LSP is socket client)', function () {
 
     function onMessage(msg) {
 	    console.log("Receiving message: " + msg);
@@ -65,32 +65,30 @@ before(function(){
                 ws.on('message',onMessage);
                 console.log("Test for ready.........");
                 resolve();
-            })
-            ws_o.on('close',function close() {
-            	console.log("Test WS closed........");
-                ws = null;
             });
+			closePromise = new Promise(function(resolve) {
+				ws_o.on('close',function close(ev) {
+					console.log("Test WS closed........ due to " + ev);
+					ws = null;
+					resolve();
+				});
+			});
 	    }).catch(function(err){
 		    reject(err);
 	    });
-    }),1000);
+    }),10000);
 });
 
 
 after(function(){
-
-    return PromiseTimeout.timeout(new Promise(function(resolve,reject){
-            if ( ws ) {
-                ws.close();
-            }
-            resolve();
-        }), 1000
-
-    );
+	if (ws) {
+		console.log("closed by test after()");
+		ws.close();
+		return closePromise;
+	}
 });
 
 it('Check for open', function() {
-    this.timeout(2000);
     return openPromise.then(function(isOpened){
         expect(isOpened).to.be.true;
     });
@@ -99,7 +97,6 @@ it('Check for open', function() {
 
 it('Check for Mirror',function(){
 	console.log("TEST - Check for Mirror");
-    this.timeout(2000);
     var testMessage = "Content-Length: 113\r\n\r\n" +
         "{\r\n" +
         "\"jsonrpc\": \"2.0\",\r\n" +
