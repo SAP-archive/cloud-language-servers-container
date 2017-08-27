@@ -49,6 +49,7 @@ public class WSSynchronization extends HttpServlet {
 	private static final int CHANGE_CREATED = 1;
 	private static final int CHANGE_CHANGED = 2;
 	private static final int CHANGE_DELETED = 3;
+	private static final String SYNC_FILE = ".sync";
 
 	private Map<String, LSPDestination> lspDestPath = new ConcurrentHashMap<>();
 
@@ -247,8 +248,8 @@ public class WSSynchronization extends HttpServlet {
 
 /* ---------------------- Private methods ------------------------------------	*/
 
-	private void syncWorkspace(InputStream workspaceZipStream, File destination) {
-		if ( destination.exists()) {
+	private void syncWorkspace(InputStream workspaceZipStream, File destination) throws IOException {
+		if ( destination.exists() && workspaceZipStream != null ) {
 			Path rootPath = Paths.get(destination.getPath());
 			try {
 				Files.walk(rootPath, FileVisitOption.FOLLOW_LINKS)
@@ -269,6 +270,12 @@ public class WSSynchronization extends HttpServlet {
 
 		LOG.info("Unzip workspace to " + destination.getAbsolutePath());
 		unpack(workspaceZipStream, destination);
+		
+		// Create sync label file
+		long timestamp = System.currentTimeMillis();
+		File fSyncts = new File(destination,SYNC_FILE);
+		new FileOutputStream(fSyncts).close();
+		fSyncts.setLastModified(timestamp);
 	}
 
 	private void unpack(InputStream workspaceZipStream, File destination) {
