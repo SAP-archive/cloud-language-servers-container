@@ -7,9 +7,9 @@ const request = require('request');
 const rp = require('request-promise');
 
 
-var aSubscribers = [];
+const aSubscribers = [];
 
-describe('WebIDE reload test', () => {
+describe('WebIDE reload test', function () {
 
 	function onMessage(msg) {
 		console.log("Receiving message: " + msg);
@@ -57,35 +57,26 @@ describe('WebIDE reload test', () => {
 	            var subprotocol = ["access_token", "12345"];
 	            var ws_o = new WebSocket('ws://localhost:8080/LanguageServer/ws/java', subprotocol);
 	            ws_o.on('open',function open(){
-	                ws = ws_o;
+	                let ws = ws_o;
 	                ws.on('message',onMessage);
 	                resolve(ws);
 	            })
 		    }).catch(function(err){
 			    reject(err);
 		    });
-		}),1000).then(function(ws) {
+		}),10000).then(function(ws) {
 			return new Promise(function(closeRes,closeRej) {
+				console.log("closed by openAndClose()");
 				ws.close();
 				ws.on('close',function close() {
-					//ws = null;
 					closeRes(true);
 				});
-				
 			})
 		});
 		
 	}
 
-	before(function(){
-	});
-
-	after(function(){
-
-	});
-
 	it('Check for Reload WebIDE', function() {
-		this.timeout(1000);
 		return openAndClose().then(function(bOpen1){
 			console.log("1st time open & close " + bOpen1);
 			expect(bOpen1).to.be.true;
