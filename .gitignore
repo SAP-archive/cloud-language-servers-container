@@ -1,4 +1,3 @@
 target/
 src/test/javascript/node_modules/
 .idea
-LSPServerCF.iml
