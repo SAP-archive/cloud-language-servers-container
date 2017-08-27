@@ -1,3 +1,5 @@
+https://travis-ci.org/SAP/cloud-language-servers-container.svg?branch=master
+
 # Description
 
 The [language server protocol](https://github.com/Microsoft/language-server-protocol) has several implementations for various technologies. Their communication protocols are low level like socket to socket and stdin/stdout. In addition they are targeted at running on the developer machine and not on cloud environment.  cloud-language-servers-container is a wrapper server that can run inside an isolated container. It exposes language servers functionality through web socket and REST APIs. The solution covers exposing the language servers, synchronization of source code, security aspects, isoation, etc.
