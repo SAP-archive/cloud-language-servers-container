@@ -108,8 +108,16 @@ public class WSSynchronization extends HttpServlet {
 	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse response)
 	 */
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		response.getWriter().append("Served at: ").append(request.getContextPath()).
-		append(" for curl -i -X PUT -H \"Content-Type: multipart/form-data\" -F \"file=@<YourZipFile>\"  https://<application>/WSSynchronization/projectxxx");
+		if ( checkSync() ) {
+			response.setContentType("application/json");
+			String workspaceSaveDir = wsSaveDir != null ? wsSaveDir + "/" : SAVE_DIR;
+			File fSyncts = new File(new File(workspaceSaveDir),SYNC_FILE);
+
+			response.getWriter().append(String.format("{ \"syncTimestamp\": \"%s\"}", Files.getLastModifiedTime(fSyncts.toPath()).toString()));
+			response.setStatus(HttpServletResponse.SC_OK);
+		} else {
+			response.setStatus(HttpServletResponse.SC_NO_CONTENT);
+		}
 	}
 
 	void initialSync(HttpServletRequest request, HttpServletResponse response, String workspaceRoot, String workspaceSaveDir) throws IOException, ServletException {
@@ -123,6 +131,16 @@ public class WSSynchronization extends HttpServlet {
 			response.setStatus(HttpServletResponse.SC_NOT_MODIFIED);
 		}
 	}
+	
+	void cleanUpWS(Path rootPath) throws IOException {
+		Files.walk(rootPath, FileVisitOption.FOLLOW_LINKS)
+		    .sorted(Comparator.reverseOrder())
+		    .filter((p) -> !p.equals(rootPath))
+		    .map(Path::toFile)
+		    .map(File::delete)
+		    .reduce((a, b) -> a && b)
+		    .ifPresent(isSuccess -> LOG.warning( "Some delete operation failed"));
+	}
 
 	/**
 	 * @see HttpServlet#doPut(HttpServletRequest request, HttpServletResponse response)
@@ -134,6 +152,10 @@ public class WSSynchronization extends HttpServlet {
 			String workspaceSaveDir = wsSaveDir != null ? wsSaveDir + "/" : SAVE_DIR;
 			initialSync(request, response, "file://" + workspaceSaveDir, workspaceSaveDir);
 		} else if (requestURI.length() > servletPath.length() )  {
+			if( !checkSync() ) {
+				response.setStatus(HttpServletResponse.SC_NO_CONTENT);
+				return;
+			}
 			addNewFiles(request, response);
 		}
 	}
@@ -179,7 +201,6 @@ public class WSSynchronization extends HttpServlet {
 	 * @see HttpServlet#doPut(HttpServletRequest request, HttpServletResponse response)
 	 */
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-
 		// Check if it is LSP registration
 		String lspReg = request.getHeader("Register-lsp");
 		if ( lspReg != null ) {
@@ -188,10 +209,14 @@ public class WSSynchronization extends HttpServlet {
 		}
 
 		// Otherwise process data passed from DI
+		if( !checkSync() ) {
+			response.setStatus(HttpServletResponse.SC_NO_CONTENT);
+			return;
+		}
 		String artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1);
 		String artifactPath = this.saveDir + artifactRelPath;
 		List<String> extracted = new ArrayList<>();
-		WSChangeObserver changeObserver = null;
+		WSChangeObserver changeObserver = null;	
 
 		File destination = new File(FilenameUtils.normalize(artifactPath));
 		// Expected: one part containing zip
@@ -222,6 +247,11 @@ public class WSSynchronization extends HttpServlet {
 	 * @see HttpServlet#doPut(HttpServletRequest request, HttpServletResponse response)
 	 */
 	protected void doDelete(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+		if( !checkSync() ) {
+			response.setStatus(HttpServletResponse.SC_NO_CONTENT);
+			return;
+		}
+		
 		String artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1);
 		String artifactPath = this.saveDir + artifactRelPath;
 		List<String> deleted  = new ArrayList<>();
@@ -251,17 +281,7 @@ public class WSSynchronization extends HttpServlet {
 	private void syncWorkspace(InputStream workspaceZipStream, File destination) throws IOException {
 		if ( destination.exists() && workspaceZipStream != null ) {
 			Path rootPath = Paths.get(destination.getPath());
-			try {
-				Files.walk(rootPath, FileVisitOption.FOLLOW_LINKS)
-				    .sorted(Comparator.reverseOrder())
-				    .map(Path::toFile)
-				    .map(File::delete)
-				    .reduce((a, b) -> a && b)
-				    .ifPresent(isSuccess -> LOG.warning( "Some delete operation failed"));
-			} catch (IOException e) {
-				LOG.warning( e.toString());
-				return;
-			}
+			cleanUpWS(rootPath);
 		}
 		if ( !destination.exists() ) { if (!destination.mkdirs()) {
 			LOG.severe("Can't create workspace path " + destination.getAbsolutePath());
@@ -405,6 +425,12 @@ public class WSSynchronization extends HttpServlet {
 		}
 
 
+	}
+	
+	private boolean checkSync() {
+		String workspaceSaveDir = wsSaveDir != null ? wsSaveDir + "/" : SAVE_DIR;
+		File fSyncts = new File(new File(workspaceSaveDir),SYNC_FILE);
+		return fSyncts.exists();
 	}
 
 
