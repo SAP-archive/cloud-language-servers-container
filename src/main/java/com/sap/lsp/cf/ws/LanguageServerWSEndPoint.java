@@ -48,7 +48,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 		}
 	}
 
-	LanguageServerWSEndPoint() {
+	public LanguageServerWSEndPoint() {
 		super();
 	}
 
