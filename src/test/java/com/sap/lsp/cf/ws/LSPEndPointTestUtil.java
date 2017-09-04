@@ -5,10 +5,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 
-public final class LSPEndPointTestUtil {
+final class LSPEndPointTestUtil {
 
 	private static final String LANG = "aLang";
 	private Path workdir;
@@ -16,12 +15,11 @@ public final class LSPEndPointTestUtil {
 	private Path wdPath;
 	private Map<String,LangServerCtx> ctx;
 
-	
-	public LSPEndPointTestUtil() {
+	LSPEndPointTestUtil() {
 		
 	}
 	
-	public String createInfra() throws IOException {
+	String createInfra() throws IOException {
 
 		this.basePath = Files.createTempDirectory("java-build-pack");
 		this.wdPath = Files.createTempDirectory(basePath, "di_ws_");
@@ -33,7 +31,7 @@ public final class LSPEndPointTestUtil {
 		
 	}
 	
-	public void MockServerContext() {
+	void MockServerContext() {
 		LangServerCtx aLangCtx = new LangServerCtx("aLang");
 		aLangCtx.put(LangServerCtx.ENV_LSP_WORKDIR, workdir.getName(workdir.getNameCount()-1).toString());
 		aLangCtx.put(LangServerCtx.ENV_LAUNCHER, "Launcher.sh");
@@ -43,19 +41,11 @@ public final class LSPEndPointTestUtil {
 		
 	}
 	
-	public Path getWorkdir() {
-		return workdir;
-	}
-	
-	public Path getBasePath() {
-		return basePath;
-	}
-
-	public Path getWdPath() {
+	Path getWdPath() {
 		return wdPath;
 	}
 
-	public Map<String, LangServerCtx> getCtx() {
+	Map<String, LangServerCtx> getCtx() {
 		return ctx;
 	}
 
