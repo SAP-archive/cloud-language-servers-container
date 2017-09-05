@@ -2,7 +2,6 @@ package com.sap.lsp.cf.ws;
 
 import com.sap.lsp.cf.ws.WSChangeObserver.ChangeType;
 import com.sap.lsp.cf.ws.WSChangeObserver.LSPDestination;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 
 import javax.json.*;
@@ -42,15 +41,10 @@ public class WSSynchronization extends HttpServlet {
 	private static final String FS_LSP_WS = "LSP-WS";
 	private static final String FS_VOLUME_MOUNTS = "volume_mounts";
 	private static final String FS_CONTAINER_DIR = "container_dir";
-	private String wsSaveDir = null;
-	private WebSocketClient wsLSP = null;
-	private String saveDir;
-
-	private static final int CHANGE_CREATED = 1;
-	private static final int CHANGE_CHANGED = 2;
-	private static final int CHANGE_DELETED = 3;
 	private static final String SYNC_FILE = ".sync";
 
+	private String wsSaveDir = null;
+	private String saveDir;
 	private Map<String, LSPDestination> lspDestPath = new ConcurrentHashMap<>();
 
     /**
@@ -100,7 +94,7 @@ public class WSSynchronization extends HttpServlet {
 		return this.wsSaveDir;
 	}
 
-	protected void setSaveDir(String saveDir) {
+	void setSaveDir(String saveDir) {
 		this.wsSaveDir = saveDir;
 	}
 
@@ -111,9 +105,8 @@ public class WSSynchronization extends HttpServlet {
 		if ( checkSync() ) {
 			response.setContentType("application/json");
 			String workspaceSaveDir = wsSaveDir != null ? wsSaveDir + "/" : SAVE_DIR;
-			File fSyncts = new File(new File(workspaceSaveDir),SYNC_FILE);
-
-			response.getWriter().append(String.format("{ \"syncTimestamp\": \"%s\"}", Files.getLastModifiedTime(fSyncts.toPath()).toString()));
+			File syncFile = new File(new File(workspaceSaveDir), SYNC_FILE);
+			response.getWriter().append(String.format("{ \"syncTimestamp\": \"%s\"}", Files.getLastModifiedTime(syncFile.toPath()).toString()));
 			response.setStatus(HttpServletResponse.SC_OK);
 		} else {
 			response.setStatus(HttpServletResponse.SC_NO_CONTENT);
@@ -222,7 +215,6 @@ public class WSSynchronization extends HttpServlet {
 		String artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1);
 		String artifactPath = this.saveDir + artifactRelPath;
 		List<String> extracted = new ArrayList<>();
-		WSChangeObserver changeObserver = null;	
 
 		File destination = new File(FilenameUtils.normalize(artifactPath));
 		// Expected: one part containing zip
@@ -231,7 +223,7 @@ public class WSSynchronization extends HttpServlet {
 			Part part = request.getParts().iterator().next();
 
 			if ( destination.exists() && !destination.isDirectory()) {
-				changeObserver = new WSChangeObserver(ChangeType.CHANGE_UPDATED, lspDestPath);
+				WSChangeObserver changeObserver = new WSChangeObserver(ChangeType.CHANGE_UPDATED, lspDestPath);
 				extracted.addAll(extract(part.getInputStream(), destination, artifactRelPath, changeObserver));
 				notifyLSP(changeObserver);
 			}
@@ -260,9 +252,6 @@ public class WSSynchronization extends HttpServlet {
 		
 		String artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1);
 		String artifactPath = this.saveDir + artifactRelPath;
-		List<String> deleted  = new ArrayList<>();
-		WSChangeObserver changeObserver = null;
-
 		File destination = new File(FilenameUtils.normalize(artifactPath));
 		if ( !destination.exists() ) {
 			response.setContentType("application/json");
@@ -275,7 +264,7 @@ public class WSSynchronization extends HttpServlet {
 		} else {
 			response.setContentType("application/json");
 			response.getWriter().append(String.format("{ \"deleted\": \"%s\"}", artifactRelPath));
-			changeObserver = new WSChangeObserver(ChangeType.CHANGE_DELETED, lspDestPath);
+			WSChangeObserver changeObserver = new WSChangeObserver(ChangeType.CHANGE_DELETED, lspDestPath);
 			changeObserver.onChangeReported("ws" + File.separator + artifactRelPath, artifactPath.substring(artifactPath.lastIndexOf('.') + 1), artifactPath);
 			notifyLSP(changeObserver);
 			response.setStatus(HttpServletResponse.SC_OK);
@@ -289,9 +278,8 @@ public class WSSynchronization extends HttpServlet {
 			Path rootPath = Paths.get(destination.getPath());
 			cleanUpWS(rootPath);
 		}
-		if ( !destination.exists() ) { if (!destination.mkdirs()) {
+		if ( !destination.exists() && !destination.mkdirs()) {
 			LOG.severe("Can't create workspace path " + destination.getAbsolutePath());
-			}
 		}
 
 		LOG.info("Unzip workspace to " + destination.getAbsolutePath());
@@ -299,9 +287,9 @@ public class WSSynchronization extends HttpServlet {
 		
 		// Create sync label file
 		long timestamp = System.currentTimeMillis();
-		File fSyncts = new File(destination,SYNC_FILE);
-		new FileOutputStream(fSyncts).close();
-		fSyncts.setLastModified(timestamp);
+		File syncFile = new File(destination,SYNC_FILE);
+		new FileOutputStream(syncFile).close();
+		syncFile.setLastModified(timestamp);
 	}
 
 	private void unpack(InputStream workspaceZipStream, File destination) {
@@ -416,7 +404,9 @@ public class WSSynchronization extends HttpServlet {
 	private void handleLSPDest(boolean bReg, BufferedReader reader) {
 		try {
 			String pathMap = URLDecoder.decode(reader.readLine(),"UTF-8");
-			if ( pathMap.length() == 0 || pathMap.indexOf("=") == -1 ) return;
+			if ( pathMap.length() == 0 || !pathMap.contains("=")) {
+				return;
+			}
 			String pm[] = pathMap.split("=");
 			String path = pm[0];
 			String dest = pm[1];

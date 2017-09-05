@@ -4,21 +4,20 @@ import java.io.File;
 import java.util.*;
 import java.util.logging.Logger;
 
-public class LangServerCtx extends HashMap<String,String> {
+class LangServerCtx extends HashMap<String,String> {
 
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 6250146579876230161L;
 	private static String BASE_DIR = "/home/vcap/app/.java-buildpack/";
-	public static final String ENV_LSP_WORKDIR = "workdir"; 
-	public static final String ENV_LAUNCHER = "exec";
-	public static final String ENV_RPCTYPE = "protocol";
+	static final String ENV_LSP_WORKDIR = "workdir";
+	static final String ENV_LAUNCHER = "exec";
+	static final String ENV_RPCTYPE = "protocol";
 
 	private static final Logger LOG = Logger.getLogger(LangServerCtx.class.getName());
 
-	public LangServerCtx(String lang) {
-
+	LangServerCtx(String lang) {
 		String prefix = LangPrefix(lang);
 		System.getenv().forEach((envVar, value)->{
 			// JAVA_HOME - Special case
@@ -32,7 +31,7 @@ public class LangServerCtx extends HashMap<String,String> {
 		
 	}
 	
-	public ProcessBuilder getProcessBuilder(String[] wsKeyElem) throws LSPException {
+	ProcessBuilder getProcessBuilder(String[] wsKeyElem) throws LSPException {
 		File wDir;
 		String launcherScript;
 		if ( !this.containsKey(ENV_LAUNCHER) || !this.containsKey(ENV_LSP_WORKDIR)) {
@@ -76,20 +75,20 @@ public class LangServerCtx extends HashMap<String,String> {
 		return pb;
 	}
 
-	public String getRpcType() {
+	String getRpcType() {
 		return get(ENV_RPCTYPE);
 		
 	}
 	
-	public static String LangPrefix(String lang) {
+	static String LangPrefix(String lang) {
 		return "LSP" + lang.toUpperCase() + "_";
 	}
 
-	protected void setBaseDir(String baseDir) {
+	void setBaseDir(String baseDir) {
 		BASE_DIR = baseDir;
 	}
 	
-	protected String getBaseDir() {
+	String getBaseDir() {
 		return BASE_DIR;
 	}
 }

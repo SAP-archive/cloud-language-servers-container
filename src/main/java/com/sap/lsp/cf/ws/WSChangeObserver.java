@@ -8,33 +8,29 @@ import java.util.Map.Entry;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-public class WSChangeObserver {
+class WSChangeObserver {
 	
 	private static final Logger LOG = Logger.getLogger(WSChangeObserver.class.getName());
 	
-	public static class LSPDestination {
+	static class LSPDestination {
 		private String path;
 		private WebSocketClient client;
-		public String LSP_HOST = "ws://localhost:8080/LanguageServer"; 
+		String LSP_HOST = "ws://localhost:8080/LanguageServer";
 
 		/**
 		 * LSP destination constructor - also initialize connection to LSP end Point
 		 * @param path String
 		 * @param webSocketClient WebSocketClient
 		 */
-		public LSPDestination(String path, WebSocketClient webSocketClient) {
+		LSPDestination(String path, WebSocketClient webSocketClient) {
 			this.path = path;
 			client = webSocketClient;
 			LOG.info("Observer establishing connection to LSP destination " + LSP_HOST + path + "?local");
 			client.connect(LSP_HOST + path + "?local");
 		}
 		
-		public WebSocketClient getWebSocketClient() {
+		WebSocketClient getWebSocketClient() {
 			return client;
-		}
-		
-		protected String getDestinationUri() {
-			return LSP_HOST + path + "?local";
 		}
 	}
 	
@@ -50,11 +46,10 @@ public class WSChangeObserver {
 	};
 	
 	/**
-	 * 
 	 * @param ct ChangeType according LSP
 	 * @param destinations Map path -> LSP destination
 	 */
-	public WSChangeObserver(ChangeType ct, Map<String, LSPDestination> destinations) {
+	WSChangeObserver(ChangeType ct, Map<String, LSPDestination> destinations) {
 		lspDestinations = destinations;
 		this.changeType = ct;
 		artifacts = new HashMap<>();
@@ -63,13 +58,10 @@ public class WSChangeObserver {
 	
 	/**
 	 * Registers artifact and maps to destination if corresponding LSP destination is listening 
-	 * @param wsKey
-	 * @param lang
-	 * @param artifactUrl
 	 */
-	public void onChangeReported(String wsKey, String lang, String artifactUrl) {
+	void onChangeReported(String wsKey, String lang, String artifactUrl) {
 		String key = LSPProcessManager.processKey(wsKey, lang);
-		LOG.info(String.format("WS Sync Observer key %s artifact %s", key, artifactUrl));
+		LOG.info(String.format("WS Sync Observer key %s artifact %s", key, artifactUrl.substring(artifactUrl.lastIndexOf('/') + 1)));
 		lspDestinations.entrySet().stream()
 					.filter(map -> artifactFilter(map, wsKey, lang))
 					.forEach((e) -> { artifacts.put(artifactUrl, e.getValue()); });
@@ -77,24 +69,21 @@ public class WSChangeObserver {
 	
 	/**
 	 * All destinations to notify something
-	 * @return
 	 */
-	public Collection<LSPDestination> getLSPDestinations() {
+	Collection<LSPDestination> getLSPDestinations() {
 		return artifacts.values();
 	}
 	
 	/**
 	 * All artifacts to notify as watched per destination
-	 * @param forDest
-	 * @return
 	 */
-	public List<String> getArtifacts(LSPDestination forDest) {
+	List<String> getArtifacts(LSPDestination forDest) {
 		return artifacts.entrySet().stream().filter(map -> forDest == map.getValue())
-			.map(map -> map.getKey()).collect(Collectors.toList());
+			.map(Entry::getKey).collect(Collectors.toList());
 	}
 
 
-	public int getType() {
+	int getType() {
 		return changeType.opcode();
 	}
 	

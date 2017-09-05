@@ -1,6 +1,15 @@
 package com.sap.lsp.cf.ws;
 
 import com.sap.lsp.cf.ws.LSPProcessManager.LSPProcess;
+import org.apache.http.HttpEntity;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.ResponseHandler;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.util.EntityUtils;
 
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
@@ -13,40 +22,21 @@ import javax.websocket.server.ServerEndpoint;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
-
-import org.apache.http.HttpEntity;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.ResponseHandler;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.util.EntityUtils;
 
 @WebListener
 @ServerEndpoint(value="/LanguageServer/{ws}/{lang}", subprotocols={"access_token","local_access"}, configurator = GetHttpSessionConfigurator.class)
 public class LanguageServerWSEndPoint implements ServletContextListener {
 
-	public static final String ENV_LSP_SERVERS = "lspservers";
-
-	private static final Logger LOG = Logger.getLogger(LanguageServerWSEndPoint.class.getName());
+    private static final Logger LOG = Logger.getLogger(LanguageServerWSEndPoint.class.getName());
+    private static final String ENV_LSP_SERVERS = "lspservers";
 	private static final String LANG_CONTEXT = "langContext";
 	private static final String LANG_SRV_PROCESS = "langServerProc";
-	private static final String ENV_AUTH = "auth";
 
-	
 	private static Map<String,LangServerCtx> langContexts = new HashMap<>();
-	
 	private static final LSPProcessManager procManager = new LSPProcessManager(langContexts);
 
 	static {
@@ -59,16 +49,22 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 	}
 
 	public LanguageServerWSEndPoint() {
-		super();		
+		super();
 	}
 
 
 	@OnOpen
 	public void onOpen(@PathParam("ws") String ws, @PathParam("lang") String lang, Session session, EndpointConfig endpointConfig) {
 	    try {
-            if (!Pattern.matches("[0-9A-Za-z@.-~]+", ws)) {
+            final String allowedPattern = "[0-9A-Za-z@.-~]+";
+            if (!Pattern.matches(allowedPattern, ws)) {
                 LOG.severe("LSP: unsupported special characters in workspace argument");
                 session.close(new CloseReason(CloseCodes.CANNOT_ACCEPT, "workspace is invalid"));
+                return;
+            }
+            if (!Pattern.matches(allowedPattern, lang)) {
+                LOG.severe("LSP: unsupported special characters in language argument");
+                session.close(new CloseReason(CloseCodes.CANNOT_ACCEPT, "language is invalid"));
                 return;
             }
             String subProtocol = session.getNegotiatedSubprotocol();
@@ -185,20 +181,19 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 /* Private methods *
  * 	
  */
-	
 	private static final String READY_MESSAGE_HEADER = "Content-Length: %d\r\n\r\n%s";
 	private static final String READY_MESSAGE = "{\"jsonrpc\": \"2.0\",\"method\": \"protocol/Ready\"}";
 	private static final String ERROR_MESSAGE = "{\"jsonrpc\": \"2.0\",\"method\": \"protocol/Error\"}";
-	
+
 	private void informReady(RemoteEndpoint.Basic remote, boolean bReady) throws IOException {
 		String msg = bReady ? READY_MESSAGE : ERROR_MESSAGE;
 		String readyMsg = String.format(READY_MESSAGE_HEADER,msg.length(),msg);
 		remote.sendText(readyMsg);
 	}
-	
+
 
 	private static final String DI_TOKEN_ENV = "DiToken";
-	
+
 	private void registerWSSyncListener(String procKey, String listenerPath, boolean onOff) {
 		String diToken = System.getenv(DI_TOKEN_ENV);
 		if (diToken == null) {
@@ -210,19 +205,18 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
         	assert listenerPath != null;
             HttpPost post = new HttpPost("http://localhost:8080/WSSynchronization");
             post.addHeader("Register-lsp", onOff ? "true" : "false");
-            post.addHeader(DI_TOKEN_ENV,diToken);
-            List<NameValuePair> nameValuePairs = new ArrayList<>(1);   
-            nameValuePairs.add(new BasicNameValuePair(procKey, listenerPath));
-            post.setEntity(new UrlEncodedFormEntity(nameValuePairs));
+            post.addHeader(DI_TOKEN_ENV, diToken);
+            post.setEntity(new UrlEncodedFormEntity(
+                    Collections.singletonList(new BasicNameValuePair(procKey, listenerPath))));
             // Create a custom response handler
             ResponseHandler<String> responseHandler = response -> {
                 int status = response.getStatusLine().getStatusCode();
                 if (status >= 200 && status < 300) {
-                	LOG.info("WS Notification listener registration OK: " + response.getStatusLine());
+                	LOG.info("WS Notification listener registration OK: " + status);
                     HttpEntity entity = response.getEntity();
                     return entity != null ? EntityUtils.toString(entity) : null;
                 } else {
-                	LOG.severe("WS Notification listener registration error: " + response.getStatusLine());
+                	LOG.severe("WS Notification listener registration error: " + status);
                     throw new ClientProtocolException("Unexpected response status: " + status);
                 }
             };
@@ -231,7 +225,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
         } catch (IOException ex) {
             LOG.severe("WS Notification listener registration error: " + ex.getMessage());
        }
-		
+
 	}
 
 	private boolean validateWSSecurityToken(String token) {
