@@ -117,7 +117,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
         LOG.info(String.format("LSP: create Head Process for lang %s session %s", lang, session.getId()));
 
         // set timeout
-        session.setMaxIdleTimeout(0L);
+        session.setMaxIdleTimeout(70000L);
 
         RemoteEndpoint.Basic remoteEndpointBasic = session.getBasicRemote();
 
