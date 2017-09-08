@@ -157,7 +157,7 @@ public class LanguageServerWSEndPointTest {
 
 		LSPProcessManager procManagerMock = Mockito.mock(LSPProcessManager.class);
 		lspProcessMock = Mockito.mock(LSPProcess.class);
-		doReturn(lspProcessMock).when(procManagerMock).createProcess(any(), any(), any());
+		doReturn(lspProcessMock).when(procManagerMock).createProcess(any(), any(), any(), any());
 		doReturn(lspProcessMock).when(procManagerMock).getProcess(any());
 		
 
@@ -176,7 +176,7 @@ public class LanguageServerWSEndPointTest {
 		Mockito.doAnswer((Answer<Void>) invocation -> {
             cleanUpCall = true;
             return null;
-        }).when(procManagerMock).cleanProcess(any(), any());
+        }).when(procManagerMock).cleanProcess(any(), any(), any());
 		
 		cut = new LanguageServerWSEndPoint();
 
