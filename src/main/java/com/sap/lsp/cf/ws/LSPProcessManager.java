@@ -24,11 +24,6 @@ class LSPProcessManager {
 	private static final String WS_KEY_DELIMITER = "~";
 	private static final Logger LOG = Logger.getLogger(LSPProcessManager.class.getName());
 
-	void cleanProcess(String ws, String lang) {
-		LSPProcess lspProc = lspProcesses.remove(LSPProcessManager.processKey(ws, lang));
-		lspProc.cleanup();
-	}
-
 	private static class OutputStreamHandler extends Thread {
 		static final String CONTENT_LENGTH_HEADER = "Content-Length";
 		static final String CONTENT_TYPE_HEADER = "Content-Type";
@@ -219,14 +214,20 @@ class LSPProcessManager {
 		private Process process;
 		private ProcessBuilder pb;
 		private RemoteEndpoint.Basic remoteEndpoint = null;
-		private String projPathElem = ""; 
+		private String projPathElem = "";
+		private final String ownerSessionId; 
 
 ;
 		
-		LSPProcess(String wsKeyElem[], ProcessBuilder pb, Basic remoteEndpoint) {
+		LSPProcess(String wsKeyElem[], ProcessBuilder pb, Basic remoteEndpoint, String ownerSessionId) {
 			this.pb = pb;
 			this.remoteEndpoint = remoteEndpoint; 
 			this.projPathElem = "/" + String.join("/", Arrays.copyOfRange(wsKeyElem,1,wsKeyElem.length));
+			this.ownerSessionId = ownerSessionId;
+		}
+
+		protected String getOwnerSessionId() {
+			return ownerSessionId;
 		}
 
 		void run() throws LSPException {
@@ -368,9 +369,9 @@ class LSPProcessManager {
 				if (this.clientSocket != null && !this.clientSocket.isClosed()) {
 					this.clientSocket.close();
 				}
-			} catch (IOException e) {
+			} catch (IOException closeEx) {
 				// TODO Auto-generated catch block
-				e.printStackTrace();
+				LOG.severe("IO Exception while cleanup: " + closeEx.toString());
 			}
 
 		}
@@ -421,13 +422,14 @@ class LSPProcessManager {
 
 	private Map<String, LSPProcess> lspProcesses = Collections.synchronizedMap(new HashMap<String, LSPProcess>());
 
-	synchronized LSPProcess createProcess(String wsKey, String lang, RemoteEndpoint.Basic remoteEndpoint) throws LSPException {
+	synchronized LSPProcess createProcess(String wsKey, String lang, RemoteEndpoint.Basic remoteEndpoint, String ownerSessionId) throws LSPException {
 
 		String procKey = processKey(wsKey, lang);
 		String rpcType = langContexts.get(lang).getRpcType();
 		String wsKeyElem[] = wsKey.split(WS_KEY_DELIMITER,3);
 		
-		LSPProcess lspProcess = new LSPProcess(wsKeyElem, langContexts.get(lang).getProcessBuilder(wsKeyElem), remoteEndpoint);
+		disconnect(procKey, ownerSessionId);
+		LSPProcess lspProcess = new LSPProcess(wsKeyElem, langContexts.get(lang).getProcessBuilder(wsKeyElem), remoteEndpoint, ownerSessionId);
 		switch(rpcType) {
 		case ENV_IPC_SOCKET:
 			socketEnv(lspProcess, LangServerCtx.LangPrefix(lang));
@@ -443,6 +445,23 @@ class LSPProcessManager {
 		}
 		lspProcesses.put(procKey, lspProcess);
 		return lspProcess;
+	}
+
+	synchronized void cleanProcess(String ws, String lang, String ownerSessionId) {
+		String procKey = LSPProcessManager.processKey(ws, lang);
+		LSPProcess lspProc =  lspProcesses.get(procKey);
+		if ( lspProc != null && lspProc.getOwnerSessionId().equals(ownerSessionId)) {
+			lspProc = lspProcesses.remove(procKey);
+			if (lspProc != null ) lspProc.cleanup();
+		}
+	}
+	
+	void disconnect(String procKey, String sessionOwnerId) {
+		LSPProcess lspProc =  lspProcesses.get(procKey);
+		if ( lspProc != null && !lspProc.getOwnerSessionId().equals(sessionOwnerId)) {
+			lspProc = lspProcesses.remove(procKey);
+			if (lspProc != null ) lspProc.cleanup();
+		}
 	}
 
 	static String processKey(String ws, String lang) {
