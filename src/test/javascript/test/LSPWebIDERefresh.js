@@ -5,6 +5,7 @@ const assert = require("chai").assert;
 const expect = require("chai").expect;
 const request = require('request');
 const rp = require('request-promise');
+const sleep = require('sleep');
 
 
 const aSubscribers = [];
@@ -132,16 +133,16 @@ describe.only('WebIDE reload test', function () {
 				ws1.on('close',function() {
 					console.log("Test - close WS1 OK");
 				});
-				that.timeout(100);
+				sleep.msleep(100);
 				return connectWS().then(function(ws2){
 					ws2.on('close',function() {
 						console.log("Test - close WS2 OK");
 					});
-					that.timeout(1000);
+					sleep.msleep(1000);
 					// Check for alive
 					console.log("Test - closing both WS");
 					ws2.close();
-					that.timeout(100);
+					sleep.msleep(100);
 					ws1.close();
 				})
 			})

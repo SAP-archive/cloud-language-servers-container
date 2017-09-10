@@ -6,6 +6,7 @@
     "chai": "4.1.1",
     "mocha": "3.5.0",
     "promise": "8.0.1",
+    "node-sleep": "5.1.1", 
     "promise-timeout": "1.1.1",
     "request": "2.81.0",
     "request-promise": "4.2.1",
