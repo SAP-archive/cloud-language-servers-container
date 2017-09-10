@@ -109,8 +109,6 @@ describe.only('WebIDE reload test', function () {
                 mirrorRes(msg);
             }});
             ws.send(testMessage);
-        }).then(function(recvMsg){
-            mirrorRej();
         });
 		
 	}
