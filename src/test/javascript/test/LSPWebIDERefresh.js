@@ -10,7 +10,7 @@ const sleep = require('sleep');
 
 const aSubscribers = [];
 
-describe('WebIDE reload test', function () {
+describe.skip('WebIDE reload test', function () {
 	
 	function onMessage(msg) {
 		console.log("Receiving message: " + msg);
