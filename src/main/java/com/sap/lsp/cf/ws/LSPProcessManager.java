@@ -464,13 +464,13 @@ class LSPProcessManager {
 	
 	@SuppressWarnings("unchecked")
 	void disconnect(String lang, String sessionOwnerId) {
-		LOG.info("LSP Manager disconnect...");
-		Optional<Entry<String, LSPProcess>> OptLspproc = lspProcesses.entrySet().stream().filter(p -> p.getValue().getLang().equals(lang)).findFirst();
+		LOG.info("LSP Manager disconnect for session " + sessionOwnerId);
+		Optional<Entry<String, LSPProcess>> optLspProc = lspProcesses.entrySet().stream().filter(p -> p.getValue().getLang().equals(lang)).findFirst();
 
 				
-		if ( OptLspproc.isPresent() && !OptLspproc.get().getValue().getOwnerSessionId().equals(sessionOwnerId)) {
-			LOG.info("LSP Manager disconnect from " + sessionOwnerId);
-			LSPProcess lsp = lspProcesses.remove(OptLspproc.get().getKey());
+		if ( optLspProc.isPresent() && !optLspProc.get().getValue().getOwnerSessionId().equals(sessionOwnerId)) {
+			LOG.info("LSP Manager disconnect from " + optLspProc.get().getValue().getOwnerSessionId());
+			LSPProcess lsp = lspProcesses.remove(optLspProc.get().getKey());
 			if (lsp != null ) lsp.cleanup();
 		}
 	}

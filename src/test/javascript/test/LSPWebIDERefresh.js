@@ -129,6 +129,9 @@ describe.only('WebIDE reload test', function () {
 		
 		return rp(tokenSync).then(function(){
 			return connectWS().then(function(ws1) {
+				ws1.on('close',function() {
+					console.log("Test - close WS1 OK");
+				});
 				that.timeout(100);
 				return connectWS().then(function(ws2){
 					ws2.on('close',function() {
@@ -136,7 +139,10 @@ describe.only('WebIDE reload test', function () {
 					});
 					that.timeout(1000);
 					// Check for alive
+					console.log("Test - closing both WS");
 					ws2.close();
+					that.timeout(100);
+					ws1.close();
 				})
 			})
 		});
