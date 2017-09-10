@@ -48,7 +48,7 @@ describe.only('WebIDE reload test', function () {
 	    return PromiseTimeout.timeout(new Promise(function(resolve, reject){
 	        openPromise = new Promise(function(openRes,openRej){
 	            aSubscribers.push({ method: "protocol/Ready", callback: function(msg){
-	            	console.log("Test - Ready received!");
+	            	console.log("Reload Test - Ready received!");
 	                openRes(true);
 	            }})
 	        });
@@ -88,15 +88,12 @@ describe.only('WebIDE reload test', function () {
 	                let ws = ws_o1;
 	                
 		            aSubscribers.push({ method: "protocol/Ready", callback: function(msg){
-		            	console.log("Test - Ready received!");
+		            	console.log("Connect WS Test - Ready received!");
 		                resolve(ws);
 		            }});
 		            
 
 	                ws.on('message',onMessage);
-	                ws.on('close',function(){
-	                	console.log("Test - close OK");
-	                });
 	            })
 	            
  		}),10000);
@@ -131,8 +128,16 @@ describe.only('WebIDE reload test', function () {
 		let that = this;
 		
 		return rp(tokenSync).then(function(){
-			return connectWS().then(function(ws) {
-				ws.close();
+			return connectWS().then(function(ws1) {
+				that.timeout(100);
+				return connectWS().then(function(ws2){
+					ws2.on('close',function() {
+						console.log("Test - close WS2 OK");
+					});
+					that.timeout(1000);
+					// Check for alive
+					ws2.close();
+				})
 			})
 		});
 		
