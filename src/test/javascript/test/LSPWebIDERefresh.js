@@ -100,7 +100,7 @@ describe.only('WebIDE reload test', function () {
 		
 	}
 
-	it('Check for Reload WebIDE', function() {
+	it.skip('Check for Reload WebIDE', function() {
 		return openAndClose().then(function(bOpen1){
 			console.log("1st time open & close " + bOpen1);
 			expect(bOpen1).to.be.true;
