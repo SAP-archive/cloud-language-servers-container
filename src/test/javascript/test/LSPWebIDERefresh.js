@@ -10,7 +10,7 @@ const sleep = require('sleep');
 
 const aSubscribers = [];
 
-describe.only('WebIDE reload test', function () {
+describe('WebIDE reload test', function () {
 	
 	function onMessage(msg) {
 		console.log("Receiving message: " + msg);
@@ -66,13 +66,11 @@ describe.only('WebIDE reload test', function () {
 			    reject(err);
 		    });
 		}),10000).then(function(ws) {
-			return new Promise(function(closeRes,closeRej) {
 				console.log("closed by openAndClose()");
 				ws.close();
 				ws.on('close',function close() {
-					closeRes(true);
+					resolve(true);
 				});
-			})
 		});
 		
 	};
