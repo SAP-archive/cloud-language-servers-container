@@ -10,7 +10,7 @@ const rp = require('request-promise');
 const aSubscribers = [];
 
 describe('WebIDE reload test', function () {
-
+	
 	function onMessage(msg) {
 		console.log("Receiving message: " + msg);
 		if ( msg.startsWith("Content-Length:") ) {
@@ -74,6 +74,28 @@ describe('WebIDE reload test', function () {
 			})
 		});
 		
+	};
+
+	function connectWS() {
+		var ws = null;
+	    return PromiseTimeout.timeout(new Promise(function(resolve, reject){
+
+
+	            aSubscribers.push({ method: "protocol/Ready", callback: function(msg){
+	            	console.log("Test - Ready received!");
+	                resolve(true);
+	            }});
+	            
+		    	console.log("Open WS ");
+	            var subprotocol = ["access_token", "12345"];
+	            var ws_o1 = new WebSocket('ws://localhost:8080/LanguageServer/ws/java?lsp_timeout=500', subprotocol);
+	            ws_o1.on('open',function open(){
+	                let ws = ws_o1;
+	                ws.on('message',onMessage);
+	            })
+	            
+ 		}),10000);
+		
 	}
 
 	it('Check for Reload WebIDE', function() {
@@ -86,6 +108,27 @@ describe('WebIDE reload test', function () {
 			});
 		});
 
+	});
+
+	it('Check for re-enter due short disconnect WebIDE', function() {
+		var d = new Date();
+		var milliSec = d.getTime() + 60 * 60 * 1000;
+	    var tokenSync = {
+		    method: "POST",
+		    uri: "http://localhost:8080/UpdateToken/?expiration=" + milliSec + "&token=12345",
+		    headers: {
+		        'DiToken': 'THEDITOKEN'
+		    },
+		    body: {},
+		    json: true
+	    };
+		
+		let that = this;
+		
+		return rp(tokenSync).then(function(){
+			return connectWS()
+		});
+		
 	});
 
 });

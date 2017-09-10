@@ -10,6 +10,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.logging.Logger;
 
 class LSPProcessManager {
@@ -215,12 +217,18 @@ class LSPProcessManager {
 		private ProcessBuilder pb;
 		private RemoteEndpoint.Basic remoteEndpoint = null;
 		private String projPathElem = "";
-		private final String ownerSessionId; 
+		private final String ownerSessionId;
+		private final String lang; 
 		
-		LSPProcess(String wsKeyElem[], ProcessBuilder pb, Basic remoteEndpoint, String ownerSessionId) {
+		protected String getLang() {
+			return lang;
+		}
+
+		LSPProcess(String wsKeyElem[], String lang, ProcessBuilder pb, Basic remoteEndpoint, String ownerSessionId) {
 			this.pb = pb;
 			this.remoteEndpoint = remoteEndpoint; 
 			this.projPathElem = "/" + String.join("/", Arrays.copyOfRange(wsKeyElem,1,wsKeyElem.length));
+			this.lang = lang;
 			this.ownerSessionId = ownerSessionId;
 		}
 
@@ -427,7 +435,7 @@ class LSPProcessManager {
 		String wsKeyElem[] = wsKey.split(WS_KEY_DELIMITER,3);
 
 		disconnect(procKey, ownerSessionId);
-		LSPProcess lspProcess = new LSPProcess(wsKeyElem, langContexts.get(lang).getProcessBuilder(wsKeyElem), remoteEndpoint, ownerSessionId);
+		LSPProcess lspProcess = new LSPProcess(wsKeyElem, lang, langContexts.get(lang).getProcessBuilder(wsKeyElem), remoteEndpoint, ownerSessionId);
 		switch(rpcType) {
 		case ENV_IPC_SOCKET:
 			socketEnv(lspProcess, LangServerCtx.LangPrefix(lang));
@@ -454,11 +462,14 @@ class LSPProcessManager {
 		}
 	}
 	
-	void disconnect(String procKey, String sessionOwnerId) {
-		LSPProcess lspProc =  lspProcesses.get(procKey);
-		if ( lspProc != null && !lspProc.getOwnerSessionId().equals(sessionOwnerId)) {
-			lspProc = lspProcesses.remove(procKey);
-			if (lspProc != null ) lspProc.cleanup();
+	@SuppressWarnings("unchecked")
+	void disconnect(String lang, String sessionOwnerId) {
+		Optional<Entry<String, LSPProcess>> OptLspproc = lspProcesses.entrySet().stream().filter(p -> p.getValue().getLang().equals(lang)).findFirst();
+
+				
+		if ( OptLspproc.isPresent() && !OptLspproc.get().getValue().getOwnerSessionId().equals(sessionOwnerId)) {
+			LSPProcess lsp = lspProcesses.remove(OptLspproc.get().getKey());
+			if (lsp != null ) lsp.cleanup();
 		}
 	}
 
