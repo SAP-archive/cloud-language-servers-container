@@ -10,7 +10,7 @@ const sleep = require('sleep');
 
 const aSubscribers = [];
 
-describe.skip('WebIDE reload test', function () {
+describe('WebIDE reload test', function () {
 	
 	function onMessage(msg) {
 		console.log("Receiving message: " + msg);
@@ -157,13 +157,19 @@ describe.skip('WebIDE reload test', function () {
 					sleep.msleep(100);
 					
 					return isAliveWS(ws2)
-					.then(function() {
+					.then(function(echoMsg) {
+						console.log("Echo succeeded - WS2 is alive");
 						expect(ws2.readyState).to.equal(1);
 						ws2.close();
+						sleep.msleep(100);
+						return Promise.resolve();
+						
 					})
 					.catch(function() {
 						ws2.close();
 						assert.fail("Mirror failed - reenter socket closed");
+						sleep.msleep(100);
+						return Promise.reject();
 					});
 					
 				})
