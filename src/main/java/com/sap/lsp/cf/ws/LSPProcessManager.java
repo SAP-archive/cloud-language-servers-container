@@ -434,7 +434,7 @@ class LSPProcessManager {
 		String rpcType = langContexts.get(lang).getRpcType();
 		String wsKeyElem[] = wsKey.split(WS_KEY_DELIMITER,3);
 
-		disconnect(procKey, ownerSessionId);
+		disconnect(lang, ownerSessionId);
 		LSPProcess lspProcess = new LSPProcess(wsKeyElem, lang, langContexts.get(lang).getProcessBuilder(wsKeyElem), remoteEndpoint, ownerSessionId);
 		switch(rpcType) {
 		case ENV_IPC_SOCKET:
@@ -464,10 +464,12 @@ class LSPProcessManager {
 	
 	@SuppressWarnings("unchecked")
 	void disconnect(String lang, String sessionOwnerId) {
+		LOG.info("LSP Manager disconnect...");
 		Optional<Entry<String, LSPProcess>> OptLspproc = lspProcesses.entrySet().stream().filter(p -> p.getValue().getLang().equals(lang)).findFirst();
 
 				
 		if ( OptLspproc.isPresent() && !OptLspproc.get().getValue().getOwnerSessionId().equals(sessionOwnerId)) {
+			LOG.info("LSP Manager disconnect from " + sessionOwnerId);
 			LSPProcess lsp = lspProcesses.remove(OptLspproc.get().getKey());
 			if (lsp != null ) lsp.cleanup();
 		}
