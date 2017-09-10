@@ -10,7 +10,7 @@ const sleep = require('sleep');
 
 const aSubscribers = [];
 
-describe('WebIDE reload test', function () {
+describe.only('WebIDE reload test', function () {
 	
 	function onMessage(msg) {
 		console.log("Receiving message: " + msg);
@@ -47,32 +47,26 @@ describe('WebIDE reload test', function () {
 		    json: true
 	    };
 	    return PromiseTimeout.timeout(new Promise(function(resolve, reject){
-	        openPromise = new Promise(function(openRes,openRej){
-	            aSubscribers.push({ method: "protocol/Ready", callback: function(msg){
-	            	console.log("Reload Test - Ready received!");
-	                openRes(true);
-	            }})
-	        });
 		    rp(tokenSync).then(function(parsedResp) {
 		    	console.log("Open WS after Sec Token sent");
 	            var subprotocol = ["access_token", "12345"];
 	            var ws_o = new WebSocket('ws://localhost:8080/LanguageServer/ws/java', subprotocol);
 	            ws_o.on('open',function open(){
 	                let ws = ws_o;
+		            aSubscribers.push({ method: "protocol/Ready", callback: function(msg){
+		            	console.log("Connect WS Test - Ready received!");
+		                sleep.msleep(1000);
+		                ws.on('close',function(){
+		                	resolve(true);
+		                });
+		                ws.close();
+		            }});
 	                ws.on('message',onMessage);
-	                resolve(ws);
 	            })
 		    }).catch(function(err){
 			    reject(err);
 		    });
-		}),10000).then(function(ws) {
-				console.log("closed by openAndClose()");
-				ws.close();
-				ws.on('close',function close() {
-					resolve(true);
-				});
-		});
-		
+		}),10000);
 	};
 
 	function connectWS() {
@@ -96,6 +90,28 @@ describe('WebIDE reload test', function () {
 	            })
 	            
  		}),10000);
+		
+	}
+	
+	function isAliveWS(ws) {
+		console.log("TEST - Check for Mirror");
+	    var testMessage = "Content-Length: 113\r\n\r\n" +
+	        "{\r\n" +
+	        "\"jsonrpc\": \"2.0\",\r\n" +
+	        "\"id\" : \"2\",\r\n" +
+	        "\"method\" : \"workspace/symbol\",\r\n" +
+	        "\"params\" : {\r\n" +
+	        "\"query\": \"ProductService*\"\r\n" +
+	        "}\r\n}";
+	    console.log("Sending test message:\r\n" + testMessage);
+        return new Promise(function(mirrorRes,mirrorRej){
+            aSubscribers.push({ method: "workspace/symbol", callback: function(msg){
+                mirrorRes(msg);
+            }});
+            ws.send(testMessage);
+        }).then(function(recvMsg){
+            mirrorRej();
+        });
 		
 	}
 
@@ -136,12 +152,21 @@ describe('WebIDE reload test', function () {
 					ws2.on('close',function() {
 						console.log("Test - close WS2 OK");
 					});
-					sleep.msleep(1000);
+					sleep.msleep(100);
 					// Check for alive
 					console.log("Test - closing both WS");
-					ws2.close();
-					sleep.msleep(100);
 					ws1.close();
+					sleep.msleep(100);
+					
+					return isAliveWS(ws2)
+					.then(function() {
+						ws2.close();
+					})
+					.catch(function() {
+						ws2.close();
+						assert.fail("Mirror failed - reenter socket closed");
+					});
+					
 				})
 			})
 		});
