@@ -55,6 +55,8 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 
 	@OnOpen
 	public void onOpen(@PathParam("ws") String ws, @PathParam("lang") String lang, Session session, EndpointConfig endpointConfig) {
+        long sessionTimeout = 70000L; //Timeout by default
+
 	    try {
             final String allowedPattern = "[0-9A-Za-z@.-~]+";
             if (!Pattern.matches(allowedPattern, ws)) {
@@ -79,6 +81,10 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
                 return;
             }
             LOG.info("LSP4J: OnOpen is invoked for sub-protocol " + subProtocol);
+            
+            if (reqParam != null && reqParam.containsKey("lsp_timeout") && reqParam.get("lsp_timeout").size() > 0 ) {
+                sessionTimeout = Long.parseLong(reqParam.get("lsp_timeout").get(0));
+            }
 
             @SuppressWarnings("unchecked")
             List<String> requestedProtocols = (List<String>) endpointConfig.getUserProperties()
@@ -117,13 +123,13 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
         LOG.info(String.format("LSP: create Head Process for lang %s session %s", lang, session.getId()));
 
         // set timeout
-        session.setMaxIdleTimeout(70000L);
+        session.setMaxIdleTimeout(sessionTimeout);
 
         RemoteEndpoint.Basic remoteEndpointBasic = session.getBasicRemote();
 
        try {
             try {
-                LSPProcess process = procManager.createProcess(ws, lang, remoteEndpointBasic);
+                LSPProcess process = procManager.createProcess(ws, lang, remoteEndpointBasic, session.getId());
 
                 process.run();
                 session.getUserProperties().put(LANG_CONTEXT, langContexts.get(lang));
@@ -158,7 +164,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 		}
 		LOG.info("LSP: OnClose is invoked");
 		registerWSSyncListener(LSPProcessManager.processKey(procManager.getProcess(LSPProcessManager.processKey(ws, lang)).getProjPath(), lang),  "/" + ws + "/" + lang,false);
-		procManager.cleanProcess(ws, lang);
+		procManager.cleanProcess(ws, lang, session.getId());
 	}
 
 	@OnError

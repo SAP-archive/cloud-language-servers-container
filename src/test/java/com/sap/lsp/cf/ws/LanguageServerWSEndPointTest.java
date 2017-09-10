@@ -35,6 +35,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Field;
 import java.net.URLDecoder;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -157,7 +158,7 @@ public class LanguageServerWSEndPointTest {
 
 		LSPProcessManager procManagerMock = Mockito.mock(LSPProcessManager.class);
 		lspProcessMock = Mockito.mock(LSPProcess.class);
-		doReturn(lspProcessMock).when(procManagerMock).createProcess(any(), any(), any());
+		doReturn(lspProcessMock).when(procManagerMock).createProcess(any(), any(), any(), any());
 		doReturn(lspProcessMock).when(procManagerMock).getProcess(any());
 		
 
@@ -176,7 +177,7 @@ public class LanguageServerWSEndPointTest {
 		Mockito.doAnswer((Answer<Void>) invocation -> {
             cleanUpCall = true;
             return null;
-        }).when(procManagerMock).cleanProcess(any(), any());
+        }).when(procManagerMock).cleanProcess(any(), any(), any());
 		
 		cut = new LanguageServerWSEndPoint();
 
@@ -260,6 +261,30 @@ public class LanguageServerWSEndPointTest {
 	@Test
 	public void testOnError() {
 		cut.onError(testSession, new LSPException());
+	}
+	
+	@Test
+	public void onOpenLsp_timeout() {
+		// HttpClient for WSSynchronize notification
+		mockStatic(HttpClients.class);
+		expect(HttpClients.createSystem()).andReturn(dummyHttpClient);
+		replayAll();
+
+		Map<String, List<String>> reqParam = new HashMap<>();
+		reqParam.put("lsp_timeout", Arrays.asList("100"));
+		Session testSessionTO = Mockito.spy(Session.class);
+		Mockito.when(testSessionTO.getRequestParameterMap()).thenReturn(reqParam);
+		Mockito.when(testSessionTO.getId()).thenReturn("0");
+		Mockito.when(testSessionTO.getNegotiatedSubprotocol()).thenReturn("access_token");
+		Mockito.when(testSessionTO.getBasicRemote()).thenReturn(remoteEndpointMock);
+
+		doReturn("/").when(lspProcessMock).getProjPath();
+		cut.onOpen("testWS", "aLang", testSessionTO, endpointConfig);
+		
+		Mockito.verify(testSessionTO,times(1)).setMaxIdleTimeout(100L);
+		assertEquals(READY_MESSAGE, readyMessage);
+		assertEquals("Wrong registration data ", "/:aLang=/testWS/aLang", getInternalState(dummyHttpClient, "regData"));
+		
 	}
 	
 	// ------------------------------------------------------------------------------------------------

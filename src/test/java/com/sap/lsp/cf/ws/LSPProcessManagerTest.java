@@ -36,42 +36,42 @@ public class LSPProcessManagerTest {
 	@Test
 	public void testCreateProcess() throws LSPException {
 		LSPProcess lsp;
-		lsp = cut.createProcess("testWS", "aLang", null);
+		lsp = cut.createProcess("testWS", "aLang", null, "1");
 		assertNotNull("Process createion failed", lsp);
 		assertEquals("Wrong project path", "/", lsp.getProjPath());
 	}
 
 	public void testCreateProcessP() throws LSPException {
 		LSPProcess lsp;
-		lsp = cut.createProcess("testWS~myProj", "aLang", null);
+		lsp = cut.createProcess("testWS~myProj", "aLang", null, "1");
 		assertNotNull("Process createion failed", lsp);
 		assertEquals("Wrong project path", "/myProj/", lsp.getProjPath());
 	}
 
 	public void testCreateProcessM() throws LSPException {
 		LSPProcess lsp;
-		lsp = cut.createProcess("testWS~myProj~myModule", "aLang", null);
+		lsp = cut.createProcess("testWS~myProj~myModule", "aLang", null, "1");
 		assertNotNull("Process createion failed", lsp);
 		assertEquals("Wrong project path", "/myProj/myModule/", lsp.getProjPath());
 	}
 
 	@Test
 	public void testGetProcess() throws LSPException {
-		cut.createProcess("testWS", "aLang", null);
+		cut.createProcess("testWS", "aLang", null, "1");
 		LSPProcess lsp = cut.getProcess(LSPProcessManager.processKey("testWS", "aLang"));
 		assertNotNull(lsp);
 	}
 
 	@Test
 	public void testGetProcessP() throws LSPException {
-		cut.createProcess("testWS~myProj", "aLang", null);
+		cut.createProcess("testWS~myProj", "aLang", null, "1");
 		LSPProcess lsp = cut.getProcess(LSPProcessManager.processKey("testWS~myProj", "aLang"));
 		assertNotNull(lsp);
 	}
 
 	@Test
 	public void testGetProcessM() throws LSPException {
-		cut.createProcess("testWS~myProj~myModule", "aLang", null);
+		cut.createProcess("testWS~myProj~myModule", "aLang", null, "1");
 		LSPProcess lsp = cut.getProcess(LSPProcessManager.processKey("testWS~myProj~myModule", "aLang"));
 		assertNotNull(lsp);
 	}
