@@ -113,7 +113,7 @@ describe.only('WebIDE reload test', function () {
 		
 	}
 
-	it.skip('Check for Reload WebIDE', function() {
+	it('Check for Reload WebIDE', function() {
 		return openAndClose().then(function(bOpen1){
 			console.log("1st time open & close " + bOpen1);
 			expect(bOpen1).to.be.true;
@@ -158,6 +158,7 @@ describe.only('WebIDE reload test', function () {
 					
 					return isAliveWS(ws2)
 					.then(function() {
+						expect(ws2.readyState).to.equal(1);
 						ws2.close();
 					})
 					.catch(function() {
