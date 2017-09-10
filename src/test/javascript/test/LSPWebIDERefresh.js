@@ -9,7 +9,7 @@ const rp = require('request-promise');
 
 const aSubscribers = [];
 
-describe('WebIDE reload test', function () {
+describe.only('WebIDE reload test', function () {
 	
 	function onMessage(msg) {
 		console.log("Receiving message: " + msg);
@@ -79,19 +79,24 @@ describe('WebIDE reload test', function () {
 	function connectWS() {
 		var ws = null;
 	    return PromiseTimeout.timeout(new Promise(function(resolve, reject){
+	    		
 
-
-	            aSubscribers.push({ method: "protocol/Ready", callback: function(msg){
-	            	console.log("Test - Ready received!");
-	                resolve(true);
-	            }});
-	            
 		    	console.log("Open WS ");
 	            var subprotocol = ["access_token", "12345"];
 	            var ws_o1 = new WebSocket('ws://localhost:8080/LanguageServer/ws/java?lsp_timeout=500', subprotocol);
 	            ws_o1.on('open',function open(){
 	                let ws = ws_o1;
+	                
+		            aSubscribers.push({ method: "protocol/Ready", callback: function(msg){
+		            	console.log("Test - Ready received!");
+		                resolve(ws);
+		            }});
+		            
+
 	                ws.on('message',onMessage);
+	                ws.on('close',function(){
+	                	console.log("Test - close OK");
+	                });
 	            })
 	            
  		}),10000);
@@ -126,7 +131,9 @@ describe('WebIDE reload test', function () {
 		let that = this;
 		
 		return rp(tokenSync).then(function(){
-			return connectWS()
+			return connectWS().then(function(ws) {
+				ws.close();
+			})
 		});
 		
 	});
