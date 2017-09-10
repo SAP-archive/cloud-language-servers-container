@@ -216,8 +216,6 @@ class LSPProcessManager {
 		private RemoteEndpoint.Basic remoteEndpoint = null;
 		private String projPathElem = "";
 		private final String ownerSessionId; 
-
-;
 		
 		LSPProcess(String wsKeyElem[], ProcessBuilder pb, Basic remoteEndpoint, String ownerSessionId) {
 			this.pb = pb;
@@ -427,7 +425,7 @@ class LSPProcessManager {
 		String procKey = processKey(wsKey, lang);
 		String rpcType = langContexts.get(lang).getRpcType();
 		String wsKeyElem[] = wsKey.split(WS_KEY_DELIMITER,3);
-		
+
 		disconnect(procKey, ownerSessionId);
 		LSPProcess lspProcess = new LSPProcess(wsKeyElem, langContexts.get(lang).getProcessBuilder(wsKeyElem), remoteEndpoint, ownerSessionId);
 		switch(rpcType) {
