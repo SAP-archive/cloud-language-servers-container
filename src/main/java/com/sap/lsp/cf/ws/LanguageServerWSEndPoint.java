@@ -58,7 +58,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
         long sessionTimeout = 70000L; //Timeout by default
 
 	    try {
-            final String allowedPattern = "[0-9A-Za-z@.\\-~]+";
+            final String allowedPattern = "[0-9A-Za-z@.\\-~_]+";
             if (!Pattern.matches(allowedPattern, ws)) {
                 LOG.severe("LSP: unsupported special characters in workspace argument");
                 session.close(new CloseReason(CloseCodes.CANNOT_ACCEPT, "workspace is invalid"));
