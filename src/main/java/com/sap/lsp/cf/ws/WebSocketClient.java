@@ -75,7 +75,7 @@ public class WebSocketClient {
             try {
                 this.userSession.getBasicRemote().sendText(message);
             } catch (IOException e) {
-                e.printStackTrace();
+                LOG.severe("sendText Error: " + e);
             }
         else {
             throw new RuntimeException("Session closed");

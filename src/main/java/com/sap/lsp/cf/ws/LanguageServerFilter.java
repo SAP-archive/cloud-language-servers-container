@@ -26,7 +26,7 @@ public class LanguageServerFilter implements Filter {
         String requestUuid = extractDIToken(servletRequest);
         if (System.getenv().containsKey(DI_TOKEN_ENV)) {
             String diToken = System.getenv(DI_TOKEN_ENV);
-            if (!diToken.equals(requestUuid)) {
+            if (diToken == null || !diToken.equals(requestUuid)) {
                 LOG.warning("Invalid request - token mismatch. Got token " + requestUuid);
                 httpResponse.sendError(HttpServletResponse.SC_UNAUTHORIZED, "invalid request - token mismatch");
                 return;
