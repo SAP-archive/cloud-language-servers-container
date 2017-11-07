@@ -163,8 +163,11 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 			return;
 		}
 		LOG.info("LSP: OnClose is invoked");
-		registerWSSyncListener(LSPProcessManager.processKey(procManager.getProcess(LSPProcessManager.processKey(ws, lang)).getProjPath(), lang),  "/" + ws + "/" + lang,false);
-		procManager.cleanProcess(ws, lang, session.getId());
+        LSPProcess process = procManager.getProcess(LSPProcessManager.processKey(ws, lang));
+        if (process != null) {
+            registerWSSyncListener(LSPProcessManager.processKey(process.getProjPath(), lang), "/" + ws + "/" + lang, false);
+            procManager.cleanProcess(ws, lang, session.getId());
+        }
 	}
 
 	@OnError
