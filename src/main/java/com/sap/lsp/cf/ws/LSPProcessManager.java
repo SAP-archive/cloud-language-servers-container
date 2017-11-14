@@ -389,7 +389,7 @@ class LSPProcessManager {
 		}
 
 		synchronized void enqueueCall(String message) {
-			if(process == null || !process.isAlive() || inWriter == null) { LOG.warning("JDT is down"); return; }
+			if(process == null || !process.isAlive() || inWriter == null) { LOG.warning(this.lang + "LSP is down"); return; }
 			inWriter.write(message);
 			inWriter.flush();
 		}
