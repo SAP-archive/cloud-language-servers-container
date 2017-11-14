@@ -4,5 +4,8 @@
   <context-param>
     <param-name>org.apache.tomcat.websocket.textBufferSize</param-name>
     <param-value>1048576</param-value>
-  </context-param>  
+  </context-param>
+  <session-config>
+    <session-timeout>150</session-timeout>
+  </session-config>
 </web-app>

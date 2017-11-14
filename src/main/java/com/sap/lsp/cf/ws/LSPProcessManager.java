@@ -287,9 +287,17 @@ class LSPProcessManager {
 				// Create pipes
 				try {
 					Process mkfifoProc = new ProcessBuilder("mkfifo", processIn).inheritIO().start();
-					mkfifoProc.waitFor();
+					int processUp = mkfifoProc.waitFor();
+					if (processUp != 0) {
+						LOG.warning("Process wait error");
+						throw new LSPException();
+					}
 					mkfifoProc = new ProcessBuilder("mkfifo", processOut).inheritIO().start();
-					mkfifoProc.waitFor();
+					processUp = mkfifoProc.waitFor();
+					if (processUp != 0) {
+						LOG.warning("Process wait error");
+						throw new LSPException();
+					}
 				} catch (IOException | InterruptedException mkfifoEx) {
 					LOG.severe("Pipe error: " + mkfifoEx.getMessage());
 				}
