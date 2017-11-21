@@ -124,7 +124,7 @@ public class WSSynchronization extends HttpServlet {
 			response.setStatus(HttpServletResponse.SC_NOT_MODIFIED);
 		}
 	}
-	
+
 	void cleanUpWS(Path rootPath) throws IOException {
 		Files.walk(rootPath, FileVisitOption.FOLLOW_LINKS)
 		    .sorted(Comparator.reverseOrder())
@@ -249,7 +249,7 @@ public class WSSynchronization extends HttpServlet {
 			response.setStatus(HttpServletResponse.SC_NO_CONTENT);
 			return;
 		}
-		
+
 		String artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1);
 		String artifactPath = this.saveDir + artifactRelPath;
 		File destination = new File(FilenameUtils.normalize(artifactPath));
@@ -265,7 +265,7 @@ public class WSSynchronization extends HttpServlet {
 			response.setContentType("application/json");
 			response.getWriter().append(String.format("{ \"deleted\": \"%s\"}", artifactRelPath));
 			WSChangeObserver changeObserver = new WSChangeObserver(ChangeType.CHANGE_DELETED, lspDestPath);
-			changeObserver.onChangeReported("ws" + File.separator + artifactRelPath, artifactPath.substring(artifactPath.lastIndexOf('.') + 1), artifactPath);
+			changeObserver.onChangeReported("ws" + File.separator + artifactRelPath, artifactPath);
 			notifyLSP(changeObserver);
 			response.setStatus(HttpServletResponse.SC_OK);
 		}
@@ -284,7 +284,7 @@ public class WSSynchronization extends HttpServlet {
 
 		LOG.info("Unzip workspace to " + destination.getAbsolutePath());
 		unpack(workspaceZipStream, destination);
-		
+
 		// Create sync label file
 		long timestamp = System.currentTimeMillis();
 		File syncFile = new File(destination,SYNC_FILE);
@@ -361,13 +361,14 @@ public class WSSynchronization extends HttpServlet {
 						fileoutputstream.write(buf, 0, n);
 					}
 		            zipinputstream.closeEntry();
-		            if ( !destination.exists()) LOG.warning("File creation error");
+		            if ( !destination.exists()) {
+		                LOG.warning("File creation error");
+		            }
 		            String filePath = destination.getPath();
 		            extracted.add(filePath);
-		            changeObserver.onChangeReported(wsKey, filePath.substring(filePath.lastIndexOf('.') + 1), filePath);
+		            changeObserver.onChangeReported(wsKey, filePath);
 		            break;
 		        }
-
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -422,7 +423,7 @@ public class WSSynchronization extends HttpServlet {
 
 
 	}
-	
+
 	private boolean checkSync() {
 		String workspaceSaveDir = wsSaveDir != null ? wsSaveDir + "/" : SAVE_DIR;
 		File fSyncts = new File(new File(workspaceSaveDir),SYNC_FILE);
