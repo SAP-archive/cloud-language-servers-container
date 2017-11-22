@@ -37,21 +37,21 @@ public class LSPProcessManagerTest {
 	public void testCreateProcess() throws LSPException {
 		LSPProcess lsp;
 		lsp = cut.createProcess("testWS", "aLang", null, "1");
-		assertNotNull("Process createion failed", lsp);
+		assertNotNull("Process creation failed", lsp);
 		assertEquals("Wrong project path", "/", lsp.getProjPath());
 	}
 
 	public void testCreateProcessP() throws LSPException {
 		LSPProcess lsp;
 		lsp = cut.createProcess("testWS~myProj", "aLang", null, "1");
-		assertNotNull("Process createion failed", lsp);
+		assertNotNull("Process creation failed", lsp);
 		assertEquals("Wrong project path", "/myProj/", lsp.getProjPath());
 	}
 
 	public void testCreateProcessM() throws LSPException {
 		LSPProcess lsp;
 		lsp = cut.createProcess("testWS~myProj~myModule", "aLang", null, "1");
-		assertNotNull("Process createion failed", lsp);
+		assertNotNull("Process creation failed", lsp);
 		assertEquals("Wrong project path", "/myProj/myModule/", lsp.getProjPath());
 	}
 

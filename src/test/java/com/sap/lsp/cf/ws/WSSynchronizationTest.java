@@ -82,7 +82,6 @@ public class WSSynchronizationTest {
 		PrintWriter responseWriter = Mockito.mock(PrintWriter.class);
 		Mockito.when(responseWriter.append(any(String.class))).thenReturn(responseWriter);
 		Mockito.when(response.getWriter()).thenReturn(responseWriter);
-	
 	}
 
 	@AfterClass
@@ -118,7 +117,6 @@ public class WSSynchronizationTest {
 		cut.doGet(request, response);
 		Mockito.verify(response, times(OK_STATS)).setStatus(HttpServletResponse.SC_OK);
 		OK_STATS++;
-
 	}
 
 	@Test
@@ -132,7 +130,6 @@ public class WSSynchronizationTest {
 		
 		Mockito.verify(response,times(NO_CONTENT_STATS)).setStatus(HttpServletResponse.SC_NO_CONTENT);
 		NO_CONTENT_STATS++;
-
 	}
 	
 	@Test
@@ -146,7 +143,6 @@ public class WSSynchronizationTest {
 		Collection<Part> parts = Collections.singleton(part1);
 		Mockito.when(request.getParts()).thenReturn(parts);
 		
-
 		cut.doPut(request, response);
 		Mockito.verify(response, times(CREATED_CALLS)).setStatus(HttpServletResponse.SC_CREATED);
 		CREATED_CALLS++;
@@ -177,7 +173,6 @@ public class WSSynchronizationTest {
 		Mockito.when(part1.getInputStream()).thenReturn( getZipStream("newProject.zip") );
 		parts = Collections.singleton(part1);
 		Mockito.when(request.getParts()).thenReturn(parts);
-		
 
 		cut.doPut(request, response);
 		Mockito.verify(response, times(CREATED_CALLS)).setStatus(HttpServletResponse.SC_CREATED);
@@ -201,13 +196,11 @@ public class WSSynchronizationTest {
 		Mockito.when(part1.getInputStream()).thenReturn( getZipStream("newProject.zip") );
 		Collection<Part>parts = Collections.singleton(part1);
 		Mockito.when(request.getParts()).thenReturn(parts);
-		
 
 		cut.doPut(request, response);
 
 		Mockito.verify(response,times(NO_CONTENT_STATS)).setStatus(HttpServletResponse.SC_NO_CONTENT);
 		NO_CONTENT_STATS++;
-		
 	}
 	
 
@@ -238,7 +231,6 @@ public class WSSynchronizationTest {
 												+ File.separator + "myModule"
 												+ File.separator + "java"
 												+ File.separator + "test.java").exists());
-		
 	}
 	
 	@Test
@@ -257,7 +249,6 @@ public class WSSynchronizationTest {
 
 		Mockito.verify(response,times(NO_CONTENT_STATS)).setStatus(HttpServletResponse.SC_NO_CONTENT);
 		NO_CONTENT_STATS++;
-		
 	}
 	
 
@@ -284,8 +275,6 @@ public class WSSynchronizationTest {
 												+ File.separator + "myModule"
 												+ File.separator + "java"
 												+ File.separator + "test.java").exists());
-		
-
 	}
 	
 	@Test
@@ -299,7 +288,6 @@ public class WSSynchronizationTest {
 		cut.doDelete(request, response);
 		Mockito.verify(response,times(NO_CONTENT_STATS)).setStatus(HttpServletResponse.SC_NO_CONTENT);
 		NO_CONTENT_STATS++;
-		
 	}
 
 	@Test
@@ -336,7 +324,6 @@ public class WSSynchronizationTest {
 		cut.doPost(request, response);
 		reg = (Map<String, LSPDestination>) getInternalState(cut.getClass(), "lspDestPath");
 		assertTrue("Listener unregistered", reg.entrySet().isEmpty());
-
 	}
 
 	@Test
@@ -372,7 +359,6 @@ public class WSSynchronizationTest {
 		cut.doPost(request, response);
 		reg = (Map<String, LSPDestination>) getInternalState(cut.getClass(), "lspDestPath");
 		assertTrue("Listener unregistered", reg.entrySet().isEmpty());
-
 	}
 
 	@Test

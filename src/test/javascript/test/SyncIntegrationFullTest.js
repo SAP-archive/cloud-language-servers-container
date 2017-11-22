@@ -10,8 +10,6 @@ const request = require('request');
 const rp = require('request-promise');
 const path = require('path');
 const Util = require('./util/Util');
-
-
 const pathPrefix = "http://localhost:8080/WSSynchronization";
 const modulePath = "/myProject/myModule";
 let closePromise;
@@ -36,9 +34,9 @@ describe('Sync Integration Full loop Test', function () {
 				"changes":[{
 					"uri":"file:///home/travis/di_ws_root/myProject/myModule/java/test.java","type":1
 				}]
-				
 			}
 		};
+
 	const update1Resp = {
 			"jsonrpc":"2.0",
 			"method":"workspace/didChangeWatchedFiles",
@@ -46,7 +44,6 @@ describe('Sync Integration Full loop Test', function () {
 				"changes":[{
 					"uri":"file:///home/travis/di_ws_root/myProject/myModule/java/test.java","type":2
 				}]
-				
 			}
 		};
 	const delete1Resp = {
@@ -56,7 +53,6 @@ describe('Sync Integration Full loop Test', function () {
 				"changes":[{
 					"uri":"file:///home/travis/di_ws_root/myProject/myModule/java/test.java","type":3
 				}]
-				
 			}
 		};
 	const createProjResp = {
@@ -66,29 +62,25 @@ describe('Sync Integration Full loop Test', function () {
 				"changes":[{
 					"uri":"file:///home/travis/di_ws_root/newProject/newModule/java1/test1.java","type":1
 				}]
-				
 			}
 		};
 	
-
     function onMessage(msg) {
 	    console.log("Test receiving message from LSP: \n" + msg);
 	    expect(msg.startsWith("Content-Length:"),"Invalid message received").to.be.true;
 	    expect(msg.indexOf("{"),"Invalid message received").to.be.above(0);
 
-        var body = msg.substr(msg.indexOf("{"));
-        var mObj = JSON.parse(body);
-
-        var oSubscr = aSubscribers.shift();
+        let body = msg.substr(msg.indexOf("{"));
+        let mObj = JSON.parse(body);
+		let oSubscr = aSubscribers.shift();
         expect(oSubscr.method).to.equal(mObj.method);
         oSubscr.callback(mObj);
-	        
     }
     
     function startLSP() {
-		var d = new Date();
-		var milliSec = d.getTime() + 60 * 60 * 1000;
-	    var tokenSync = {
+		let d = new Date();
+		let milliSec = d.getTime() + 60 * 60 * 1000;
+		let tokenSync = {
 		    method: "POST",
 		    uri: "http://localhost:8080/UpdateToken/?expiration=" + milliSec + "&token=12345",
 		    headers: {
@@ -97,7 +89,7 @@ describe('Sync Integration Full loop Test', function () {
 		    body: {},
 		    json: true
 	    };
-		var readyPromise = new Promise(function(readyRes,readyRej){
+		let readyPromise = new Promise(function(readyRes,readyRej){
             aSubscribers.push({ method: "protocol/Ready", callback: function(msg){
             	console.log("Test - Ready received!");
                 readyRes(true);
@@ -108,8 +100,8 @@ describe('Sync Integration Full loop Test', function () {
 
 		    rp(tokenSync).then(function(parsedResp) {
 		    	console.log("Open WS after Sec Token sent");
-	            var subprotocol = ["access_token", "12345"];
-	            var ws_o = new WebSocket('ws://localhost:8080/LanguageServer/ws~myProject~myModule/java', subprotocol);
+				let subprotocol = ["access_token", "12345"];
+				let ws_o = new WebSocket('ws://localhost:8080/LanguageServer/ws~myProject~myModule/java', subprotocol);
 	            ws_o.on('open',function open(){
 	                ws = ws_o;
 	                ws.on('message',onMessage);
@@ -168,8 +160,6 @@ describe('Sync Integration Full loop Test', function () {
 				})
 			}),
 		]);
-    	
-
     }
 
 
@@ -258,7 +248,7 @@ describe('Sync Integration Full loop Test', function () {
 			new Promise(function(resolve,reject){
 		        aSubscribers.push({ method: "workspace/didChangeWatchedFiles", callback: function(oLspMsg){
 		        	console.log("Test create - loopback received:\n" + JSON.stringify(oLspMsg));
-		        	expect(oLspMsg,"Create notification faillure").to.deep.equal(create1Resp);
+		        	expect(oLspMsg,"Create notification failure").to.deep.equal(create1Resp);
 		        	resolve();
 		        }})
 			})
@@ -300,7 +290,7 @@ describe('Sync Integration Full loop Test', function () {
 			}),
 			new Promise(function(resolve,reject){
 				// Check that no Message is sent - wait 1 sec
-		        var toId = setTimeout(function() {
+				let toId = setTimeout(function() {
 		        	// Clear subscriber and resolve
 		        	aSubscribers.pop();
 		        	resolve();
@@ -313,7 +303,6 @@ describe('Sync Integration Full loop Test', function () {
 		        	clearTimeout(toId);
 		        	reject("No message expected"); 
 		        }});
-		        
 			})
 		])
 		
