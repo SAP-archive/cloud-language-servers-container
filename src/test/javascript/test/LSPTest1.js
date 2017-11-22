@@ -59,7 +59,7 @@ before(function(){
 	    rp(tokenSync).then(function(parsedResp) {
 	    	console.log("Open WS after Sec Token sent");
             var subprotocol = ["access_token", "12345"];
-            var ws_o = new WebSocket('ws://localhost:8080/LanguageServer/ws/java', subprotocol);
+            var ws_o = new WebSocket('ws://localhost:8080/LanguageServer/ws/lang1', subprotocol);
             ws_o.on('open',function open(){
                 ws = ws_o;
                 ws.on('message',onMessage);
