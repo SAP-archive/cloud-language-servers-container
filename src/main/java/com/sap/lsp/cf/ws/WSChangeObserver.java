@@ -13,8 +13,9 @@ class WSChangeObserver {
 	private static final Logger LOG = Logger.getLogger(WSChangeObserver.class.getName());
 	
 	static class LSPDestination {
+		private String path;
 		private WebSocketClient client;
-		private static String LSP_HOST = "ws://localhost:8080/LanguageServer";
+		String LSP_HOST = "ws://localhost:8080/LanguageServer";
 
 		/**
 		 * LSP destination constructor - also initialize connection to LSP end Point
@@ -22,6 +23,7 @@ class WSChangeObserver {
 		 * @param webSocketClient WebSocketClient
 		 */
 		LSPDestination(String path, WebSocketClient webSocketClient) {
+			this.path = path;
 			client = webSocketClient;
 			LOG.info("Observer establishing connection to LSP destination " + LSP_HOST + path + "?local");
 			client.connect(LSP_HOST + path + "?local");
@@ -57,10 +59,11 @@ class WSChangeObserver {
 	/**
 	 * Registers artifact and maps to destination if corresponding LSP destination is listening 
 	 */
-	void onChangeReported(String wsKey, String artifactUrl) {
-		LOG.info(String.format("WS Sync Observer ws key %s artifact %s", wsKey, artifactUrl.substring(artifactUrl.lastIndexOf('/') + 1)));
+	void onChangeReported(String wsKey, String lang, String artifactUrl) {
+		String key = LSPProcessManager.processKey(wsKey, lang);
+		LOG.info(String.format("WS Sync Observer key %s artifact %s", key, artifactUrl.substring(artifactUrl.lastIndexOf('/') + 1)));
 		lspDestinations.entrySet().stream()
-					.filter(map -> artifactFilter(map, wsKey))
+					.filter(map -> artifactFilter(map, wsKey, lang))
 					.forEach((e) -> { artifacts.put(artifactUrl, e.getValue()); });
 	}
 	
@@ -84,10 +87,11 @@ class WSChangeObserver {
 		return changeType.opcode();
 	}
 	
-	private static boolean artifactFilter(Map.Entry<String,LSPDestination> regEntry, String path) {
+	private static boolean artifactFilter(Map.Entry<String,LSPDestination> regEntry, String path, String lang) {
 		String[] regKey = regEntry.getKey().split(":");
 		String pathFilter = "ws" + regKey[0];
-		return path.startsWith(pathFilter);
+		String langFilter = regKey[1];
+		return langFilter.equals(lang) && path.startsWith(pathFilter);
 	}
 
 }
