@@ -50,7 +50,7 @@ describe('WebIDE reload test', function () {
 		    rp(tokenSync).then(function(parsedResp) {
 		    	console.log("Open WS after Sec Token sent");
 	            var subprotocol = ["access_token", "12345"];
-	            var ws_o = new WebSocket('ws://localhost:8080/LanguageServer/ws/java', subprotocol);
+	            var ws_o = new WebSocket('ws://localhost:8080/LanguageServer/ws/my_lang', subprotocol);
 	            ws_o.on('open',function open(){
 	                let ws = ws_o;
 		            aSubscribers.push({ method: "protocol/Ready", callback: function(msg){
@@ -72,11 +72,9 @@ describe('WebIDE reload test', function () {
 	function connectWS() {
 		var ws = null;
 	    return PromiseTimeout.timeout(new Promise(function(resolve, reject){
-	    		
-
 		    	console.log("Open WS ");
 	            var subprotocol = ["access_token", "12345"];
-	            var ws_o1 = new WebSocket('ws://localhost:8080/LanguageServer/ws/java?lsp_timeout=500', subprotocol);
+	            var ws_o1 = new WebSocket('ws://localhost:8080/LanguageServer/ws/my_lang?lsp_timeout=500', subprotocol);
 	            ws_o1.on('open',function open(){
 	                let ws = ws_o1;
 	                
