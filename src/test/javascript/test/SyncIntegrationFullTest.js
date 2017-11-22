@@ -10,6 +10,7 @@ const request = require('request');
 const rp = require('request-promise');
 const path = require('path');
 const Util = require('./util/Util');
+
 const pathPrefix = "http://localhost:8080/WSSynchronization";
 const modulePath = "/myProject/myModule";
 let closePromise;
@@ -101,7 +102,7 @@ describe('Sync Integration Full loop Test', function () {
 		    rp(tokenSync).then(function(parsedResp) {
 		    	console.log("Open WS after Sec Token sent");
 				let subprotocol = ["access_token", "12345"];
-				let ws_o = new WebSocket('ws://localhost:8080/LanguageServer/ws~myProject~myModule/java', subprotocol);
+				let ws_o = new WebSocket('ws://localhost:8080/LanguageServer/ws~myProject~myModule/my_lang', subprotocol);
 	            ws_o.on('open',function open(){
 	                ws = ws_o;
 	                ws.on('message',onMessage);
@@ -266,7 +267,7 @@ describe('Sync Integration Full loop Test', function () {
 				new Promise(function(resolve,reject){
 			        aSubscribers.push({ method: "workspace/didChangeWatchedFiles", callback: function(oLspMsg){
 			        	console.log("Test update - loopback received:\n" + JSON.stringify(oLspMsg));
-			        	expect(oLspMsg,"Update notification faillure").to.deep.equal(update1Resp);
+			        	expect(oLspMsg,"Update notification failure").to.deep.equal(update1Resp);
 			        	resolve();
 			        }})
 				})
@@ -298,7 +299,7 @@ describe('Sync Integration Full loop Test', function () {
 
 		        aSubscribers.push({ method: "workspace/didChangeWatchedFiles", callback: function(oLspMsg){
 		        	console.log("Test create - loopback received:\n" + JSON.stringify(oLspMsg));
-		        	expect(oLspMsg,"Create notification faillure").to.deep.equal(createProjResp);
+		        	expect(oLspMsg,"Create notification failure").to.deep.equal(createProjResp);
 		        	// Message is OK but not expected - clear timeout and reject
 		        	clearTimeout(toId);
 		        	reject("No message expected"); 
