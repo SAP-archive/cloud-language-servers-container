@@ -102,7 +102,7 @@ describe('Sync Integration Full loop Test', function () {
 		    rp(tokenSync).then(function(parsedResp) {
 		    	console.log("Open WS after Sec Token sent");
 				let subprotocol = ["access_token", "12345"];
-				let ws_o = new WebSocket('ws://localhost:8080/LanguageServer/ws~myProject~myModule/my_lang', subprotocol);
+				let ws_o = new WebSocket('ws://localhost:8080/LanguageServer/ws~myProject~myModule/lang1', subprotocol);
 	            ws_o.on('open',function open(){
 	                ws = ws_o;
 	                ws.on('message',onMessage);
