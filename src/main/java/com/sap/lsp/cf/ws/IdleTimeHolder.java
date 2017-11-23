@@ -4,8 +4,7 @@ package com.sap.lsp.cf.ws;
  * Exposes the time passed since last user activity
  */
 class IdleTimeHolder {
-	private long lastTimestamp = 0;
-
+	private long lastTimestamp = System.currentTimeMillis();
 	private static IdleTimeHolder idleTimeHolder = new IdleTimeHolder();
 
 	static IdleTimeHolder getInstance() {
