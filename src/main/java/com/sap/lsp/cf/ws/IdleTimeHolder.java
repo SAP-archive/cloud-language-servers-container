@@ -5,7 +5,7 @@ package com.sap.lsp.cf.ws;
  */
 class IdleTimeHolder {
 	private long lastTimestamp = System.currentTimeMillis();
-	git
+
 	private static IdleTimeHolder idleTimeHolder = new IdleTimeHolder();
 
 	static IdleTimeHolder getInstance() {
