@@ -371,7 +371,6 @@ public class WSSynchronization extends HttpServlet {
 		        }
 			}
 		} catch (IOException e) {
-			e.printStackTrace();
 			LOG.warning("UNZIP error: " + e.toString());
 		}
 
