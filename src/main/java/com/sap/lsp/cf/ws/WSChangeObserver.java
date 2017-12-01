@@ -84,7 +84,7 @@ class WSChangeObserver {
 		return changeType.opcode();
 	}
 	
-	private static boolean artifactFilter(Map.Entry<String,LSPDestination> regEntry, String path) {
+	private static boolean artifactFilter(Map.Entry<String, LSPDestination> regEntry, String path) {
 		String[] regKey = regEntry.getKey().split(":");
 		String pathFilter = "ws" + regKey[0];
 		return path.startsWith(pathFilter);
