@@ -1,13 +1,13 @@
 ---
 applications:
-- name: lsp
+- name: lsp-devxutils-lsp_dev-workspacedo2nw21vwlyt88sz
   memory: 1024M
   instances: 1
   path: target/LSPServerCF.war
-  buildpack: https://github.com/SAP/cf-language-server-buildpack.git
+  buildpack: https://github.com/i337250/cf-language-server-buildpack.git
   stack: cflinuxfs2
   env: 
     JAVA-OPTS: -agentlib:jdwp=transport=dt_socket,address=195.93.234.9:8000
     JBP_CONFIG_DEBUG: '{enabled: true}'
-    lspservers: java,cdx
+    lspservers: java
     DiToken: 5c2b4300-5603-4b72-a943-6e14131a2864
