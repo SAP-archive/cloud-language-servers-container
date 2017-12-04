@@ -316,7 +316,8 @@ public class WSSynchronization extends HttpServlet {
 						fileoutputstream.write(buf, 0, n);
 					}
 				}
-				extracted.add(newFile.getPath());
+				// notification path is relative to workspace root
+				extracted.add(newFile.getPath().substring(destination.getPath().length()));
 				zipInputStream.closeEntry();
 				if ( !newFile.exists()) LOG.warning("File creation error");
 				zipentry = zipInputStream.getNextEntry();
@@ -330,7 +331,7 @@ public class WSSynchronization extends HttpServlet {
 	private boolean extract(InputStream inputstream, WSChangeObserver changeObserver) {
 		final List<String> extracted = unpack(inputstream, new File(getWorkspaceSaveDir()));
 		for (String filePath : extracted) {
-			changeObserver.onChangeReported("ws" + File.separator + filePath, filePath);
+			changeObserver.onChangeReported("ws" + filePath, filePath);
 		}
 		return extracted.size() > 0;
 	}
