@@ -259,7 +259,7 @@ public class WSSynchronization extends HttpServlet {
         response.setContentType("application/json");
         response.getWriter().append(String.format("{ \"deleted\": \"%s\"}", artifactRelPath));
         WSChangeObserver changeObserver = new WSChangeObserver(ChangeType.CHANGE_DELETED, lspDestPath);
-        changeObserver.onChangeReported("ws" + File.separator + artifactRelPath, artifactPath);
+        changeObserver.onChangeReported(artifactRelPath, this.saveDir);
         notifyLSP(changeObserver);
         response.setStatus(HttpServletResponse.SC_OK);
     }
@@ -331,7 +331,7 @@ public class WSSynchronization extends HttpServlet {
 	private boolean extract(InputStream inputstream, WSChangeObserver changeObserver) {
 		final List<String> extracted = unpack(inputstream, new File(this.saveDir));
 		for (String artifactRelPath : extracted) {
-			changeObserver.onChangeReported("ws" + File.separator + artifactRelPath, artifactRelPath);
+			changeObserver.onChangeReported(artifactRelPath, this.saveDir);
 		}
 		return extracted.size() > 0;
 	}
