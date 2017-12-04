@@ -87,7 +87,7 @@ public class WSSynchronization extends HttpServlet {
 				}
 			}
     	}
-        this.saveDir =  wsSaveDir != null ? wsSaveDir + "/" : SAVE_DIR + "/";
+		this.saveDir = wsSaveDir != null ? wsSaveDir + "/" : SAVE_DIR + "/";
 
     }
 
@@ -316,8 +316,8 @@ public class WSSynchronization extends HttpServlet {
 						fileoutputstream.write(buf, 0, n);
 					}
 				}
-				// notification path is relative to workspace root
-				extracted.add(newFile.getPath().substring(destination.getPath().length()));
+				// relative path
+				extracted.add(zipentry.getName());
 				zipInputStream.closeEntry();
 				if ( !newFile.exists()) LOG.warning("File creation error");
 				zipentry = zipInputStream.getNextEntry();
@@ -329,9 +329,9 @@ public class WSSynchronization extends HttpServlet {
 	}
 
 	private boolean extract(InputStream inputstream, WSChangeObserver changeObserver) {
-		final List<String> extracted = unpack(inputstream, new File(getWorkspaceSaveDir()));
-		for (String filePath : extracted) {
-			changeObserver.onChangeReported("ws" + filePath, filePath);
+		final List<String> extracted = unpack(inputstream, new File(this.saveDir));
+		for (String artifactRelPath : extracted) {
+			changeObserver.onChangeReported("ws" + File.separator + artifactRelPath, artifactRelPath);
 		}
 		return extracted.size() > 0;
 	}
@@ -382,7 +382,7 @@ public class WSSynchronization extends HttpServlet {
 	}
 
 	private boolean checkSync() {
-		String workspaceSaveDir = getWorkspaceSaveDir();
+		String workspaceSaveDir = this.saveDir;
 		File fSyncts = new File(new File(workspaceSaveDir),SYNC_FILE);
 		return fSyncts.exists();
 	}
