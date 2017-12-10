@@ -1,5 +1,6 @@
 package com.sap.lsp.cf.ws;
 
+import java.io.File;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -57,7 +58,9 @@ class WSChangeObserver {
 	/**
 	 * Registers artifact and maps to destination if corresponding LSP destination is listening 
 	 */
-	void onChangeReported(String wsKey, String artifactUrl) {
+	void onChangeReported(String artifactRelPath, String saveDir) {
+		String wsKey ="ws" + File.separator + artifactRelPath;
+		String artifactUrl = saveDir + artifactRelPath;
 		LOG.info(String.format("WS Sync Observer ws key %s artifact %s", wsKey, artifactUrl.substring(artifactUrl.lastIndexOf('/') + 1)));
 		lspDestinations.entrySet().stream()
 					.filter(map -> artifactFilter(map, wsKey))
@@ -84,7 +87,7 @@ class WSChangeObserver {
 		return changeType.opcode();
 	}
 	
-	private static boolean artifactFilter(Map.Entry<String,LSPDestination> regEntry, String path) {
+	private static boolean artifactFilter(Map.Entry<String, LSPDestination> regEntry, String path) {
 		String[] regKey = regEntry.getKey().split(":");
 		String pathFilter = "ws" + regKey[0];
 		return path.startsWith(pathFilter);

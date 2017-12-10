@@ -9,5 +9,5 @@ applications:
   env: 
     JAVA-OPTS: -agentlib:jdwp=transport=dt_socket,address=195.93.234.9:8000
     JBP_CONFIG_DEBUG: '{enabled: true}'
-    lspservers: java,cdx
+    lspservers: java
     DiToken: 5c2b4300-5603-4b72-a943-6e14131a2864
