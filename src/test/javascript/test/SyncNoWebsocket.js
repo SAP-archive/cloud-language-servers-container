@@ -73,16 +73,18 @@ describe('Sync Integration Test - no websocket', function () {
 			form.append('file', fs.createReadStream(zipFilePath));
 		}).then(function () {
 			// putting file that already exists should fail
-			return new Promise(function (resolve) {
-				let req = request.put(pathPrefix + modulePath + '/java/test.java', COMMON_OPTIONS, function (err, res) {
-					console.log("error: " + err);
-					console.log("res: " + res);
-					assert.ok(res);
-					assert.equal(res.statusCode, 403);
-					resolve(res);
+			setTimeout(function () {
+				return new Promise(function (resolve) {
+					let req = request.put(pathPrefix + modulePath + '/java/test.java', COMMON_OPTIONS, function (err, res) {
+						console.log("error: " + err);
+						console.log("res: " + res);
+						assert.ok(res);
+						assert.equal(res.statusCode, 403);
+						resolve(res);
+					});
+					req.form().append('file', fs.createReadStream(zipFilePath));
 				});
-				req.form().append('file', fs.createReadStream(zipFilePath));
-			});
+			}, 10);
 		}).then(deletePath.bind(undefined, '/java/test.java', filePath));
 	});
 

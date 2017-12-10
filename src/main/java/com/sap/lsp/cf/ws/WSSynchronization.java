@@ -281,7 +281,7 @@ public class WSSynchronization extends HttpServlet {
 		// Create sync label file
 		long timestamp = System.currentTimeMillis();
 		File syncFile = new File(destination, SYNC_FILE);
-		new FileOutputStream(syncFile).close();
+		syncFile.createNewFile();
 		syncFile.setLastModified(timestamp);
 	}
 
@@ -383,8 +383,8 @@ public class WSSynchronization extends HttpServlet {
 
 	private boolean checkSync() {
 		String workspaceSaveDir = this.saveDir;
-		File fSyncts = new File(new File(workspaceSaveDir),SYNC_FILE);
-		return fSyncts.exists();
+		File fSync = new File(new File(workspaceSaveDir), SYNC_FILE);
+		return fSync.exists();
 	}
 
 

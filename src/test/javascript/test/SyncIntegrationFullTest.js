@@ -154,8 +154,8 @@ describe('Sync Integration Full loop Test', function () {
 			new Promise(function (resolve, reject) {
 				aSubscribers.push({
 					method: "workspace/didChangeWatchedFiles", callback: function (oLspMsg) {
-						console.log("Test response delete single file - loopback received:\n" + JSON.stringify(oLspMsg));
-						expect(oLspMsg, "Delete notification faillure").to.deep.equal(delete1Resp);
+						console.log("Test response delete single file - loop back received:\n" + JSON.stringify(oLspMsg));
+						expect(oLspMsg, "Delete notification failure").to.deep.equal(delete1Resp);
 						resolve();
 					}
 				})
