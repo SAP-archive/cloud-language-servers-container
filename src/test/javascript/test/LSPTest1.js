@@ -97,13 +97,14 @@ it('Check for open', function() {
 
 it('Check for Mirror',function(){
 	console.log("TEST - Check for Mirror");
+	
     var testMessage = "Content-Length: 114\r\n\r\n" +
         "{\r\n" +
         "\"jsonrpc\": \"2.0\",\r\n" +
         "\"id\" : \"2\",\r\n" +
         "\"method\" : \"workspace/symbol\",\r\n" +
         "\"params\" : {\r\n" +
-        "\"query\": \"ProductServicÚ*\"\r\n" +
+        "\"query\": \"ProductServicÚ*\"\r\n" + //last character Ú is a 2byte char for test special characters
         "}\r\n}";
     console.log("Sending test message:\r\n" + testMessage);
     return openPromise.then(function(isOpened){
