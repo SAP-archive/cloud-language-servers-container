@@ -104,7 +104,7 @@ it('Check for Mirror',function(){
         "\"id\" : \"2\",\r\n" +
         "\"method\" : \"workspace/symbol\",\r\n" +
         "\"params\" : {\r\n" +
-        "\"query\": \"ProductServicÚ*\"\r\n" + //last character Ú is a 2byte char for test special characters
+        "\"query\": \"ProductServicÚ*\"\r\n" + //last character Ú is 2bytes in order to test special characters
         "}\r\n}";
     console.log("Sending test message:\r\n" + testMessage);
     return openPromise.then(function(isOpened){
