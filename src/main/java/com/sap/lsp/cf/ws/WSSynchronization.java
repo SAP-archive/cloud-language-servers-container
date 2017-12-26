@@ -179,7 +179,7 @@ public class WSSynchronization extends HttpServlet {
 			Part part = request.getParts().iterator().next();
 			WSChangeObserver changeObserver = new WSChangeObserver(ChangeType.CHANGE_CREATED, lspDestPath);
 			if (extract(part.getInputStream(), changeObserver)) {
-				notifyLSP(changeObserver);
+				changeObserver.notifyLSP();
 				response.setContentType("application/json");
 				response.getWriter().append(String.format("{ \"created\": \"%s\"}", artifactRelPath));
 				response.setStatus(HttpServletResponse.SC_CREATED);
@@ -221,7 +221,7 @@ public class WSSynchronization extends HttpServlet {
 
 			WSChangeObserver changeObserver = new WSChangeObserver(ChangeType.CHANGE_UPDATED, lspDestPath);
 			if (destination.exists() && !destination.isDirectory() && extract(part.getInputStream(), changeObserver)) {
-				notifyLSP(changeObserver);
+				changeObserver.notifyLSP();
 				response.setContentType("application/json");
 				response.getWriter().append(String.format("{ \"updated\": \"%s\"}", artifactRelPath));
 				response.setStatus(HttpServletResponse.SC_OK);
@@ -260,7 +260,7 @@ public class WSSynchronization extends HttpServlet {
         response.getWriter().append(String.format("{ \"deleted\": \"%s\"}", artifactRelPath));
         WSChangeObserver changeObserver = new WSChangeObserver(ChangeType.CHANGE_DELETED, lspDestPath);
         changeObserver.onChangeReported(artifactRelPath, this.saveDir);
-        notifyLSP(changeObserver);
+        changeObserver.notifyLSP();
         response.setStatus(HttpServletResponse.SC_OK);
     }
 
@@ -334,29 +334,6 @@ public class WSSynchronization extends HttpServlet {
 			changeObserver.onChangeReported(artifactRelPath, this.saveDir);
 		}
 		return extracted.size() > 0;
-	}
-
-	private String buildLSPNotification(int type, List<String> artifacts) {
-		JsonArrayBuilder changes = Json.createArrayBuilder();
-		for (String sUrl: artifacts) {
-			changes.add(Json.createObjectBuilder().add("uri", "file://" + sUrl).add("type", type).build());
-		}
-		JsonObject bodyObj = Json.createObjectBuilder()
-				.add("jsonrpc", "2.0")
-				.add("method", "workspace/didChangeWatchedFiles")
-				.add("params", Json.createObjectBuilder()
-						.add("changes", changes.build())
-						.build())
-				.build();
-		String body = bodyObj.toString();
-		return String.format("Content-Length: %d\r\n\r\n%s", body.length(), body);
-	}
-
-	private void notifyLSP(WSChangeObserver changeObserver) {
-		for ( LSPDestination dest : changeObserver.getLSPDestinations()) {
-			String message = buildLSPNotification(changeObserver.getType(), changeObserver.getArtifacts(dest));
-			dest.getWebSocketClient().sendNotification(message);
-		}
 	}
 
 	private void handleLSPDest(boolean bReg, BufferedReader reader) {
