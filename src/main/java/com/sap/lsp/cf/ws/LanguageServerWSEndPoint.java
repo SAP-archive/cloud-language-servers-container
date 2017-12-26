@@ -28,36 +28,36 @@ import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
 @WebListener
-@ServerEndpoint(value="/LanguageServer/{ws}/{lang}", subprotocols={"access_token","local_access"}, configurator = GetHttpSessionConfigurator.class)
+@ServerEndpoint(value = "/LanguageServer/{ws}/{lang}", subprotocols = {"access_token", "local_access"}, configurator = GetHttpSessionConfigurator.class)
 public class LanguageServerWSEndPoint implements ServletContextListener {
 
     private static final Logger LOG = Logger.getLogger(LanguageServerWSEndPoint.class.getName());
     private static final String ENV_LSP_SERVERS = "lspservers";
-	private static final String LANG_CONTEXT = "langContext";
-	private static final String LANG_SRV_PROCESS = "langServerProc";
+    private static final String LANG_CONTEXT = "langContext";
+    private static final String LANG_SRV_PROCESS = "langServerProc";
 
-	private static Map<String,LangServerCtx> langContexts = new HashMap<>();
-	private static final LSPProcessManager procManager = new LSPProcessManager(langContexts);
+    private static Map<String, LangServerCtx> langContexts = new HashMap<>();
+    private static final LSPProcessManager procManager = new LSPProcessManager(langContexts);
 
-	static {
-		if ( System.getenv().containsKey(ENV_LSP_SERVERS)) {
-			String langs[] = System.getenv(ENV_LSP_SERVERS).split(",");
-			for(String lang : langs) {
-				if ( lang.length() > 0) langContexts.put(lang, new LangServerCtx(lang));
-			}
-		}
-	}
+    static {
+        if (System.getenv().containsKey(ENV_LSP_SERVERS)) {
+            String langs[] = System.getenv(ENV_LSP_SERVERS).split(",");
+            for (String lang : langs) {
+                if (lang.length() > 0) langContexts.put(lang, new LangServerCtx(lang));
+            }
+        }
+    }
 
-	public LanguageServerWSEndPoint() {
-		super();
-	}
+    public LanguageServerWSEndPoint() {
+        super();
+    }
 
 
-	@OnOpen
-	public void onOpen(@PathParam("ws") String ws, @PathParam("lang") String lang, Session session, EndpointConfig endpointConfig) {
+    @OnOpen
+    public void onOpen(@PathParam("ws") String ws, @PathParam("lang") String lang, Session session, EndpointConfig endpointConfig) {
         long sessionTimeout = 70000L; //Timeout by default
 
-	    try {
+        try {
             final String allowedPattern = "[0-9A-Za-z@.\\-~_]+";
             if (!Pattern.matches(allowedPattern, ws)) {
                 LOG.severe("LSP: unsupported special characters in workspace argument");
@@ -81,8 +81,8 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
                 return;
             }
             LOG.info("LSP4J: OnOpen is invoked for sub-protocol " + subProtocol);
-            
-            if (reqParam != null && reqParam.containsKey("lsp_timeout") && reqParam.get("lsp_timeout").size() > 0 ) {
+
+            if (reqParam != null && reqParam.containsKey("lsp_timeout") && reqParam.get("lsp_timeout").size() > 0) {
                 sessionTimeout = Long.parseLong(reqParam.get("lsp_timeout").get(0));
             }
 
@@ -127,14 +127,14 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 
         RemoteEndpoint.Basic remoteEndpointBasic = session.getBasicRemote();
 
-       try {
+        try {
             try {
                 LSPProcess process = procManager.createProcess(ws, lang, remoteEndpointBasic, session.getId());
 
                 process.run();
                 session.getUserProperties().put(LANG_CONTEXT, langContexts.get(lang));
                 session.getUserProperties().put(LANG_SRV_PROCESS, process);
-                registerWSSyncListener(LSPProcessManager.processKey(process.getProjPath(), lang),  "/" + ws + "/" + lang,true);
+                registerWSSyncListener(LSPProcessManager.processKey(process.getProjPath(), lang), "/" + ws + "/" + lang, true);
                 informReady(remoteEndpointBasic, true);
             } catch (LSPException e) {
                 informReady(remoteEndpointBasic, false);
@@ -146,72 +146,72 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 
     }
 
-	@OnMessage
-	public void onMessage(@PathParam("ws") String ws, @PathParam("lang") String lang, String message, Session session) {
-		if ( message.length() == 0 ) return; // This is just ping!
-		IdleTimeHolder.getInstance().registerUserActivity();
-		LOG.info("LSP: onMessage is invoked: \n" + message);
-		LOG.info(String.format("LSP: get Head Process for wsKey %s lang %s session %s", ws, lang, session.getId()));
-		LSPProcess lspProc = procManager.getProcess(LSPProcessManager.processKey(ws, lang));
-		lspProc.enqueueCall(message);
-	}
+    @OnMessage
+    public void onMessage(@PathParam("ws") String ws, @PathParam("lang") String lang, String message, Session session) {
+        if (message.length() == 0) return; // This is just ping!
+        IdleTimeHolder.getInstance().registerUserActivity();
+        LOG.info("LSP: onMessage is invoked: \n" + message);
+        LOG.info(String.format("LSP: get Head Process for wsKey %s lang %s session %s", ws, lang, session.getId()));
+        LSPProcess lspProc = procManager.getProcess(LSPProcessManager.processKey(ws, lang));
+        lspProc.enqueueCall(message);
+    }
 
-	@OnClose
-	public void onClose(@PathParam("ws") String ws, @PathParam("lang") String lang, Session session, CloseReason reason ) {
-	    Map<String,List<String>> reqParam = session.getRequestParameterMap();
-		if ( reqParam != null && reqParam.containsKey("local") ) {
-			return;
-		}
-		LOG.info("LSP: OnClose is invoked");
+    @OnClose
+    public void onClose(@PathParam("ws") String ws, @PathParam("lang") String lang, Session session, CloseReason reason) {
+        Map<String, List<String>> reqParam = session.getRequestParameterMap();
+        if (reqParam != null && reqParam.containsKey("local")) {
+            return;
+        }
+        LOG.info("LSP: OnClose is invoked");
         LSPProcess process = procManager.getProcess(LSPProcessManager.processKey(ws, lang));
         if (process != null) {
             registerWSSyncListener(LSPProcessManager.processKey(process.getProjPath(), lang), "/" + ws + "/" + lang, false);
             procManager.cleanProcess(ws, lang, session.getId());
         }
-	}
+    }
 
-	@OnError
-	public void onError(Session session, Throwable thr) {
-	    String message = thr.getMessage() != null ? thr.getMessage() : thr.toString();
-		LOG.severe("On Error: " + message);
-	}
+    @OnError
+    public void onError(Session session, Throwable thr) {
+        String message = thr.getMessage() != null ? thr.getMessage() : thr.toString();
+        LOG.severe("On Error: " + message);
+    }
 
-	@Override
-	public void contextDestroyed(ServletContextEvent sce) {
-		// TODO Auto-generated method stub
+    @Override
+    public void contextDestroyed(ServletContextEvent sce) {
+        // TODO Auto-generated method stub
 
-	}
+    }
 
-	@Override
-	public void contextInitialized(ServletContextEvent sce) {
+    @Override
+    public void contextInitialized(ServletContextEvent sce) {
 
-	}
+    }
 
-/* Private methods *
- * 	
- */
-	private static final String READY_MESSAGE_HEADER = "Content-Length: %d\r\n\r\n%s";
-	private static final String READY_MESSAGE = "{\"jsonrpc\": \"2.0\",\"method\": \"protocol/Ready\"}";
-	private static final String ERROR_MESSAGE = "{\"jsonrpc\": \"2.0\",\"method\": \"protocol/Error\"}";
+    /* Private methods *
+     *
+     */
+    private static final String READY_MESSAGE_HEADER = "Content-Length: %d\r\n\r\n%s";
+    private static final String READY_MESSAGE = "{\"jsonrpc\": \"2.0\",\"method\": \"protocol/Ready\"}";
+    private static final String ERROR_MESSAGE = "{\"jsonrpc\": \"2.0\",\"method\": \"protocol/Error\"}";
 
-	private void informReady(RemoteEndpoint.Basic remote, boolean bReady) throws IOException {
-		String msg = bReady ? READY_MESSAGE : ERROR_MESSAGE;
-		String readyMsg = String.format(READY_MESSAGE_HEADER,msg.length(),msg);
-		remote.sendText(readyMsg);
-	}
+    private void informReady(RemoteEndpoint.Basic remote, boolean bReady) throws IOException {
+        String msg = bReady ? READY_MESSAGE : ERROR_MESSAGE;
+        String readyMsg = String.format(READY_MESSAGE_HEADER, msg.length(), msg);
+        remote.sendText(readyMsg);
+    }
 
 
-	private static final String DI_TOKEN_ENV = "DiToken";
+    private static final String DI_TOKEN_ENV = "DiToken";
 
-	private void registerWSSyncListener(String procKey, String listenerPath, boolean onOff) {
-		String diToken = System.getenv(DI_TOKEN_ENV);
-		if (diToken == null) {
-			LOG.log(Level.WARNING, "WS notification listener registration skipped - missed Token");
-			diToken = "";
-		}
+    private void registerWSSyncListener(String procKey, String listenerPath, boolean onOff) {
+        String diToken = System.getenv(DI_TOKEN_ENV);
+        if (diToken == null) {
+            LOG.log(Level.WARNING, "WS notification listener registration skipped - missed Token");
+            diToken = "";
+        }
         try (CloseableHttpClient httpClient = HttpClients.createSystem()) {
-        	assert procKey != null;
-        	assert listenerPath != null;
+            assert procKey != null;
+            assert listenerPath != null;
             HttpPost post = new HttpPost("http://localhost:8080/WSSynchronization");
             post.addHeader("Register-lsp", onOff ? "true" : "false");
             post.addHeader(DI_TOKEN_ENV, diToken);
@@ -221,11 +221,11 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
             ResponseHandler<String> responseHandler = response -> {
                 int status = response.getStatusLine().getStatusCode();
                 if (status >= 200 && status < 300) {
-                	LOG.info("WS Notification listener registration OK: " + status);
+                    LOG.info("WS Notification listener registration OK: " + status);
                     HttpEntity entity = response.getEntity();
                     return entity != null ? EntityUtils.toString(entity) : null;
                 } else {
-                	LOG.severe("WS Notification listener registration error: " + status);
+                    LOG.severe("WS Notification listener registration error: " + status);
                     throw new ClientProtocolException("Unexpected response status: " + status);
                 }
             };
@@ -233,16 +233,15 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
             String responseBody = httpClient.execute(post, responseHandler);
         } catch (IOException ex) {
             LOG.severe("WS Notification listener registration error: " + ex.getMessage());
-       }
+        }
 
-	}
+    }
 
-	private boolean validateWSSecurityToken(String token) {
+    private boolean validateWSSecurityToken(String token) {
         Date date = new Date();
         Date expirationDate = new Date(Long.valueOf(System.getProperty("com.sap.lsp.cf.ws.expirationDate")));
         return (token.equals(System.getProperty("com.sap.lsp.cf.ws.token")) && date.before(expirationDate));
     }
-
 
 
 }
