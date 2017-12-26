@@ -57,10 +57,7 @@ public class WSSynchronizationTest {
 
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
-        // wsClient = Mockito.mock(WebSocketClient.class);
-        // PowerMock.mockStatic(WebSocketClient.class);
         Mockito.doNothing().when(wsClient).connect(any());
-
         testUtil = new LSPEndPointTestUtil();
         String log = testUtil.createInfra();
         LOG.info(log);
@@ -281,7 +278,7 @@ public class WSSynchronizationTest {
     }
 
     @Test
-    public void testDoRegisterLSPWS() throws IOException, ServletException {
+    public void testDoRegisterLspWS() throws IOException, ServletException {
         String regData = "/:aLang=/testWS/aLang";
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
@@ -317,7 +314,7 @@ public class WSSynchronizationTest {
     }
 
     @Test
-    public void testDoRegisterLSPProj() throws IOException, ServletException {
+    public void testDoRegisterLspProj() throws IOException, ServletException {
         String regData = "/myProj/:aLang/=/testWS/aLang";
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         HttpServletResponse response = Mockito.mock(HttpServletResponse.class);
@@ -352,7 +349,7 @@ public class WSSynchronizationTest {
     }
 
     @Test
-    public void testDoRegisterLSPModule() throws IOException, ServletException {
+    public void testDoRegisterLspModule() throws IOException, ServletException {
         String regData = "/myProj/myModule/:aLang/=/testWS/aLang";
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
 
