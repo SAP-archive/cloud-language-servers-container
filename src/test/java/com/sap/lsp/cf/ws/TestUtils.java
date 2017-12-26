@@ -11,7 +11,7 @@ public class TestUtils {
         try {
             Field f = cut.getClass().getDeclaredField(field);
             f.setAccessible(true);
-            return (T)f.get(cut);
+            return (T) f.get(cut);
         } catch (Exception e) {
             throw new RuntimeException("Unable to set internal state on a private field. [...]", e);
         }
