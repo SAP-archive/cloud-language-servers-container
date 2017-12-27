@@ -97,10 +97,7 @@ it('Check for open', function() {
 
 it('Check for Mirror',function(){
 	console.log("TEST - Check for Mirror");
-<<<<<<< HEAD
-=======
-	
->>>>>>> bytesBug/master
+
     var testMessage = "Content-Length: 114\r\n\r\n" +
         "{\r\n" +
         "\"jsonrpc\": \"2.0\",\r\n" +
