@@ -15,9 +15,9 @@ public class WebsocketToken extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         Long timestamp = Long.parseLong(request.getParameter("expiration"));
         String token = request.getParameter("token");
-        
+
         LOG.info("UpdateToken was called with token " + token + " expiration date " + timestamp);
-        
+
         System.setProperty("com.sap.lsp.cf.ws.token", token);
         System.setProperty("com.sap.lsp.cf.ws.expirationDate", timestamp.toString());
     }
