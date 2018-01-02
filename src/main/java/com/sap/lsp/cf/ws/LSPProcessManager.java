@@ -28,7 +28,7 @@ class LSPProcessManager {
         static final String CRLF = "\r\n";
 
         private final Basic remote;
-        private final BufferedReader out;
+        private final InputStream out;
         private boolean keepRunning;
 
         private static class Headers {
@@ -36,7 +36,7 @@ class LSPProcessManager {
             String charset = StandardCharsets.UTF_8.name();
         }
 
-        OutputStreamHandler(RemoteEndpoint.Basic remoteEndpointBasic, BufferedReader out) {
+        OutputStreamHandler(RemoteEndpoint.Basic remoteEndpointBasic, InputStream out) {
             this.remote = remoteEndpointBasic;
             this.out = out;
         }
@@ -67,10 +67,10 @@ class LSPProcessManager {
             }
         }
 
-        void postMessage(BufferedReader out, Headers headers, StringBuilder msgBuffer) throws IOException {
+        void postMessage(InputStream out, Headers headers, StringBuilder msgBuffer) throws IOException {
 
             int contentLength = headers.contentLength;
-            char[] buffer = new char[contentLength];
+            byte[] buffer = new byte[contentLength];
             int bytesRead = 0;
 
             while (bytesRead < contentLength) {
@@ -79,7 +79,8 @@ class LSPProcessManager {
                     throw new IOException("Unexpected end of message");
                 bytesRead += readResult;
             }
-            msgBuffer.append(CRLF).append(CRLF).append(new String(buffer));
+            String msgContent = new String(buffer, headers.charset);
+            msgBuffer.append(CRLF).append(CRLF).append(msgContent);
             LOG.info("LSP sends " + msgBuffer.toString());
             remote.sendText(msgBuffer.toString());
 
@@ -95,7 +96,7 @@ class LSPProcessManager {
 
             while (keepRunning) {
                 try {
-                    int c = out.read();
+                    byte c = (byte) out.read();
                     if (c == -1) {
                         // End of input stream has been reached
                         Thread.sleep(100);
@@ -208,7 +209,7 @@ class LSPProcessManager {
         private Socket sin;
         private Socket sout;
         private PrintWriter inWriter = null;
-        private Reader out = null;
+        private InputStream out = null;
         private Process process;
         private ProcessBuilder pb;
         private RemoteEndpoint.Basic remoteEndpoint = null;
@@ -252,7 +253,7 @@ class LSPProcessManager {
                                 sout = serverSocketOut.accept();
                                 inWriter = new PrintWriter(
                                         new BufferedWriter(new OutputStreamWriter(sin.getOutputStream())));
-                                out = new InputStreamReader(sout.getInputStream());
+                                out = sout.getInputStream();
                             } catch (IOException ex) {
                                 LOG.warning("Error in Socket communication " + ex.toString());
                             }
@@ -272,7 +273,7 @@ class LSPProcessManager {
                         public void run() {
                             try {
                                 inWriter = new PrintWriter((new BufferedWriter(new FileWriter(processOut))));
-                                out = new FileReader(processIn);
+                                out = new FileInputStream(processIn);
                             } catch (IOException pipeEx) {
                                 LOG.warning("Error in pipes communication " + pipeEx.toString());
                             }
@@ -331,16 +332,16 @@ class LSPProcessManager {
                         Thread.sleep(500L);
                         this.clientSocket = new Socket("localhost", clientSocketPort);
                         inWriter = new PrintWriter(new BufferedWriter(new OutputStreamWriter(this.clientSocket.getOutputStream())));
-                        out = new InputStreamReader(this.clientSocket.getInputStream());
+                        out = this.clientSocket.getInputStream();
                     } else {
                         // Stdin / Stdout
-                        out = new InputStreamReader(process.getInputStream());
+                        out = process.getInputStream();
                         OutputStream in = process.getOutputStream();
                         inWriter = new PrintWriter(new BufferedWriter(new OutputStreamWriter(in)));
                     }
                     LOG.info("LSP: Server started");
 
-                    outputHandler = new OutputStreamHandler(remoteEndpoint, new BufferedReader(out));
+                    outputHandler = new OutputStreamHandler(remoteEndpoint, out);
                     outputHandler.start();
                 } else {
                     LOG.severe("LSP: Server start failure");
