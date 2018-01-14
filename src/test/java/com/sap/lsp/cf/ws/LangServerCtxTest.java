@@ -14,12 +14,10 @@ public class LangServerCtxTest {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-
 		cut = new LangServerCtx("aLang");
 		cut.setBaseDir(System.getProperty("user.dir") + File.separator + "src" + File.separator + "test");
 		cut.put("workdir", File.separator + "util");
-		cut.put("exec", File.separator + "util" + File.separator + "EchoLauncher.sh");
-
+		cut.put("exec", File.separator + "util" + File.separator + "EchoLauncher1.sh");
 	}
 
 	@AfterClass
