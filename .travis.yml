@@ -1,18 +1,12 @@
-language: LANG1
+language: java
+
 jdk:
   - oraclejdk8
 env:
-  - lspservers=lang1,lang2 DiToken=THEDITOKEN basedir=$TRAVIS_BUILD_DIR/src/test/ LSPLANG1_workdir=util/ LSPLANG2_workdir=util/ LSPLANG1_exec=util/EchoLauncher.sh LSPLANG2_exec=util/EchoLauncher2.sh LSPLANG1_protocol=socket LSPLANG1_inport=8991 LSPLANG1_outport=8990 LSPLANG1_STDIN_PORT=8991 LSPLANG1_STDOUT_PORT=8990 LSPLANG2_protocol="socket-client" LSPLANG2_clientport=8765
+  - lspservers=lang1,lang2 DiToken=THEDITOKEN basedir=$TRAVIS_BUILD_DIR/src/test/ LSPLANG1_workdir=util/ LSPLANG2_workdir=util/ LSPLANG1_exec=util/EchoLauncher1.sh LSPLANG2_exec=util/EchoLauncher2.sh LSPLANG1_protocol=socket LSPLANG1_inport=8991 LSPLANG1_outport=8990 LSPLANG1_STDIN_PORT=8991 LSPLANG1_STDOUT_PORT=8990 LSPLANG2_protocol="socket-client" LSPLANG2_clientport=8765
 
 before_install:
   - curl -o 'settings.xml' 'https://raw.githubusercontent.com/SAP/cf-language-server-buildpack/master/resources/language_server_bin_exec_jdt/.m2/settings.xml'
 
 script:
   - mvn clean install -Pintegration-test -s settings.xml
-
-#deploy:
-#  - provider: script
-#    script: mvn deploy
-#    on:
-#      branch: master
-
