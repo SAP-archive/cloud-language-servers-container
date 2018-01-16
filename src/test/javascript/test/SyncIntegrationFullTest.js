@@ -23,50 +23,14 @@ const COMMON_OPTIONS = {
 };
 
 describe('Sync Integration Full loop Test', function () {
+	this.timeout(20000);
 
 	let folderPath = "";
 	let filePath = "";
 	let ws = null;
-	let aSubscribers = [];	
-	const create1Resp = {
-			"jsonrpc":"2.0",
-			"method":"workspace/didChangeWatchedFiles",
-			"params":{
-				"changes":[{
-					"uri":"file:///home/travis/di_ws_root/myProject/myModule/java/test.java","type":1
-				}]
-			}
-		};
+	let aSubscribers = [];
 
-	const update1Resp = {
-			"jsonrpc":"2.0",
-			"method":"workspace/didChangeWatchedFiles",
-			"params":{
-				"changes":[{
-					"uri":"file:///home/travis/di_ws_root/myProject/myModule/java/test.java","type":2
-				}]
-			}
-		};
-	const delete1Resp = {
-			"jsonrpc":"2.0",
-			"method":"workspace/didChangeWatchedFiles",
-			"params":{
-				"changes":[{
-					"uri":"file:///home/travis/di_ws_root/myProject/myModule/java/test.java","type":3
-				}]
-			}
-		};
-	const createProjResp = {
-			"jsonrpc":"2.0",
-			"method":"workspace/didChangeWatchedFiles",
-			"params":{
-				"changes":[{
-					"uri":"file:///home/travis/di_ws_root/newProject/newModule/java1/test1.java","type":1
-				}]
-			}
-		};
-	
-    function onMessage(msg) {
+	function onMessage(msg) {
 	    console.log("Test receiving message from LSP: \n" + msg);
 	    expect(msg.startsWith("Content-Length:"),"Invalid message received").to.be.true;
 	    expect(msg.indexOf("{"),"Invalid message received").to.be.above(0);
@@ -144,18 +108,21 @@ describe('Sync Integration Full loop Test', function () {
 	});
 
 	function deleteSingleFile() {
-		console.log("Delete single file" + pathPrefix + modulePath + '/java/test.java');
+		console.log("Delete single file " + pathPrefix + modulePath + '/java/test.java');
 		return Promise.all([
 			new Promise(function (resolve, reject) {
 				request.delete(pathPrefix + modulePath + '/java/test.java', COMMON_OPTIONS, function (err, res, body) {
 					onDeleteResponse(err, res, body, resolve, reject);
-				})
+				});
 			}),
 			new Promise(function (resolve, reject) {
 				aSubscribers.push({
 					method: "workspace/didChangeWatchedFiles", callback: function (oLspMsg) {
 						console.log("Test response delete single file - loopback received:\n" + JSON.stringify(oLspMsg));
-						expect(oLspMsg, "Delete notification faillure").to.deep.equal(delete1Resp);
+						expect(oLspMsg.jsonrpc).to.equal("2.0");
+						expect(oLspMsg.method).to.equal("workspace/didChangeWatchedFiles");
+						expect(oLspMsg.params.changes[0].uri).to.include("di_ws_root/myProject/myModule/java/test.java");
+						expect(oLspMsg.params.changes[0].type).to.equal(3);
 						resolve();
 					}
 				})
@@ -246,12 +213,17 @@ describe('Sync Integration Full loop Test', function () {
 				let putForm = req.form();
 				putForm.append('file', fs.createReadStream(zipPutFilePath));
 			}),
-			new Promise(function(resolve,reject){
-		        aSubscribers.push({ method: "workspace/didChangeWatchedFiles", callback: function(oLspMsg){
-		        	console.log("Test create - loopback received:\n" + JSON.stringify(oLspMsg));
-		        	expect(oLspMsg,"Create notification failure").to.deep.equal(create1Resp);
-		        	resolve();
-		        }})
+			new Promise(function (resolve, reject) {
+				aSubscribers.push({
+					method: "workspace/didChangeWatchedFiles", callback: function (oLspMsg) {
+						console.log("Test create - loopback received:\n" + JSON.stringify(oLspMsg));
+						expect(oLspMsg.jsonrpc).to.equal("2.0");
+						expect(oLspMsg.method).to.equal("workspace/didChangeWatchedFiles");
+						expect(oLspMsg.params.changes[0].uri).to.include("di_ws_root/myProject/myModule/java/test.java");
+						expect(oLspMsg.params.changes[0].type).to.equal(1);
+						resolve();
+					}
+				})
 			})
 		])
 		// Update the artifact and send update notification
@@ -264,12 +236,17 @@ describe('Sync Integration Full loop Test', function () {
 					let postForm = req.form();
 					postForm.append('file', fs.createReadStream(zipPostFilePath));
 				}),
-				new Promise(function(resolve,reject){
-			        aSubscribers.push({ method: "workspace/didChangeWatchedFiles", callback: function(oLspMsg){
-			        	console.log("Test update - loopback received:\n" + JSON.stringify(oLspMsg));
-			        	expect(oLspMsg,"Update notification failure").to.deep.equal(update1Resp);
-			        	resolve();
-			        }})
+				new Promise(function (resolve, reject) {
+					aSubscribers.push({
+						method: "workspace/didChangeWatchedFiles", callback: function (oLspMsg) {
+							console.log("Test update - loopback received:\n" + JSON.stringify(oLspMsg));
+							expect(oLspMsg.jsonrpc).to.equal("2.0");
+							expect(oLspMsg.method).to.equal("workspace/didChangeWatchedFiles");
+							expect(oLspMsg.params.changes[0].uri).to.include("di_ws_root/myProject/myModule/java/test.java");
+							expect(oLspMsg.params.changes[0].type).to.equal(2);
+							resolve();
+						}
+					})
 				})
 			])
 		})
@@ -290,17 +267,15 @@ describe('Sync Integration Full loop Test', function () {
 				putForm.append('file', fs.createReadStream(zipNewProjPath));
 			}),
 			new Promise(function(resolve,reject){
-				// Check that no Message is sent - wait 1 sec
+				// Check that no Message is sent - wait
 				let toId = setTimeout(function() {
 		        	// Clear subscriber and resolve
 		        	aSubscribers.pop();
 		        	resolve();
-		        },10000);
+		        },12000);
 
 		        aSubscribers.push({ method: "workspace/didChangeWatchedFiles", callback: function(oLspMsg){
 		        	console.log("Test create - loopback received:\n" + JSON.stringify(oLspMsg));
-		        	expect(oLspMsg,"Create notification failure").to.deep.equal(createProjResp);
-		        	// Message is OK but not expected - clear timeout and reject
 		        	clearTimeout(toId);
 		        	reject("No message expected"); 
 		        }});

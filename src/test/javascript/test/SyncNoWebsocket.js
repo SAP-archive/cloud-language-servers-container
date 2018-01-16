@@ -16,6 +16,7 @@ const COMMON_OPTIONS = {
 };
 
 describe('Sync Integration Test - no websocket', function () {
+	this.timeout(20000);
 
 	let folderPath = "";
 	let filePath = "";

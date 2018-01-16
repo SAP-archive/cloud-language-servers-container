@@ -7,7 +7,7 @@ import java.util.logging.Logger;
 class LangServerCtx extends HashMap<String,String> {
 
 	/**
-	 * 
+	 *
 	 */
 	private static final long serialVersionUID = 6250146579876230161L;
 	private static String BASE_DIR = "/home/vcap/app/.java-buildpack/";
@@ -25,12 +25,12 @@ class LangServerCtx extends HashMap<String,String> {
 				put(envVar.substring(prefix.length(),envVar.length()), value);
 			}
 		});
-		
+
 		// Test hack - override Base Directory for non-CF test
-		if ( System.getenv("basedir") != null ) BASE_DIR = System.getenv("basedir");
-		
+		if (System.getenv("basedir") != null) BASE_DIR = System.getProperty("user.dir") + System.getenv("basedir");
+
 	}
-	
+
 	ProcessBuilder getProcessBuilder(String[] wsKeyElem) throws LSPException {
 		File wDir;
 		String launcherScript;
@@ -54,18 +54,22 @@ class LangServerCtx extends HashMap<String,String> {
 	        LOG.info("LSP Working dir is " + workdir);
 	        LOG.info("LSP Env HOME: " + System.getenv("HOME"));
 		}
-		
+
 
 		List<String> cmd = new ArrayList<>();
-		String scriptExec = System.getProperty("os.name").substring(0,3).equalsIgnoreCase("win") ? "cmd.exe /C" : "/bin/bash";
-		cmd.add(scriptExec);
+		if (System.getProperty("os.name").substring(0, 3).equalsIgnoreCase("win")) {
+			cmd.add("cmd.exe");
+			cmd.add("/C");
+		} else {
+			cmd.add("/bin/bash");
+		}
 		cmd.add(launcherScript);
 		Collections.addAll(cmd, wsKeyElem);
 
 		ProcessBuilder pb = new ProcessBuilder(cmd);
 		pb.directory(wDir);
 		pb.redirectErrorStream(true);
-		
+
 		Map<String,String> env = pb.environment();
 		//TODO JAVA_HOME is relevant only to JDT. find a way to send it from build pack
 		env.put("JAVA_HOME", System.getProperty("java.home"));
@@ -77,9 +81,9 @@ class LangServerCtx extends HashMap<String,String> {
 
 	String getRpcType() {
 		return get(ENV_RPCTYPE);
-		
+
 	}
-	
+
 	static String LangPrefix(String lang) {
 		return "LSP" + lang.toUpperCase() + "_";
 	}
@@ -87,7 +91,7 @@ class LangServerCtx extends HashMap<String,String> {
 	void setBaseDir(String baseDir) {
 		BASE_DIR = baseDir;
 	}
-	
+
 	String getBaseDir() {
 		return BASE_DIR;
 	}

@@ -1,15 +1,15 @@
 {
   "scripts": {
-    "test": "mocha --timeout 20000"
+    "test": "mocha"
   },
   "devDependencies": {
     "chai": "4.1.1",
     "mocha": "3.5.0",
     "promise": "8.0.1",
-    "sleep": "5.1.1", 
     "promise-timeout": "1.1.1",
     "request": "2.81.0",
     "request-promise": "4.2.1",
+    "thread-sleep": "^2.0.0",
     "ws": "3.1.0"
   },
   "dependencies": {

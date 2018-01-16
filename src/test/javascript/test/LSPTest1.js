@@ -12,6 +12,7 @@ let openPromise;
 const aSubscribers = [];
 
 describe('Protocol test (LSP is socket client)', function () {
+	this.timeout(20000);
 
     function onMessage(msg) {
 	    console.log("Receiving message: " + msg);
