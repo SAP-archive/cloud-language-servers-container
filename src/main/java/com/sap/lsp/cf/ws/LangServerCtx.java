@@ -27,7 +27,10 @@ class LangServerCtx extends HashMap<String,String> {
 		});
 
 		// Test hack - override Base Directory for non-CF test
-		if (System.getenv("basedir") != null) BASE_DIR = System.getProperty("user.dir") + System.getenv("basedir");
+		if (System.getenv("basedir") != null) BASE_DIR =
+				(System.getProperty("os.name").substring(0, 3).equalsIgnoreCase("win")
+						? System.getProperty("user.dir") : "")
+						+ System.getenv("basedir");
 
 	}
 
