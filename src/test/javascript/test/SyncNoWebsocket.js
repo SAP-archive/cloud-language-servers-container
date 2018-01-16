@@ -16,6 +16,7 @@ const COMMON_OPTIONS = {
 };
 
 describe('Sync Integration Test - no websocket', function () {
+	this.timeout(20000);
 
 	let folderPath = "";
 	let filePath = "";
@@ -36,16 +37,6 @@ describe('Sync Integration Test - no websocket', function () {
 		});
 	}
 
-
-	function onPostResponse(err, res, body, resolve, reject) {
-		assert.ok(!err);
-		assert.ok(res);
-		assert.equal(res.statusCode, 200);
-		assert.ok(fs.existsSync(filePath));
-		let newFileContent = fs.readFileSync(filePath).toString();
-		assert.equal(newFileContent, "test", "Update file content check");
-		resolve(res);
-	}
 
 	function onDeleteResponse(filePath, err, res, resolve) {
 		assert.ok(!err);
@@ -95,30 +86,6 @@ describe('Sync Integration Test - no websocket', function () {
 			});
 			req.form().append('file', fs.createReadStream(zipPostFilePath));
 		});
-	});
-
-	it('Create update and delete file', function () {
-		let zipPutFilePath = path.resolve(__dirname, '../resources/putTest.zip');
-		let zipPostFilePath = path.resolve(__dirname, '../resources/postTest.zip');
-		return new Promise(function (resolve) {
-			let req = request.put(pathPrefix + modulePath + '/java/test.java', COMMON_OPTIONS, function (err, res, body) {
-				assert.ok(!err);
-				assert.ok(res);
-				console.log("Put resp: " + body);
-				assert.equal(201, res.statusCode, "File creation error");
-				assert.ok(fs.existsSync(filePath));
-				resolve(res);
-			});
-			let putForm = req.form();
-			putForm.append('file', fs.createReadStream(zipPutFilePath));
-		}).then(function () {
-			return new Promise(function (resolve, reject) {
-				let req = request.post(pathPrefix + modulePath + '/java/test.java', COMMON_OPTIONS, function (err, res, body) {
-					onPostResponse(err, res, body, resolve, reject);
-				});
-				req.form().append('file', fs.createReadStream(zipPostFilePath));
-			});
-		}).then(deletePath.bind(undefined, '/java/test.java', filePath));
 	});
 
 	it('Create folder and delete it', function () {

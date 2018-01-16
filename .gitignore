@@ -1,3 +1,5 @@
 target/
 src/test/javascript/node_modules/
 .idea
+!.idea/runConfigurations
+/src/test/javascript/package-lock.json

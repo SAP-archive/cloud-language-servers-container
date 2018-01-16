@@ -82,7 +82,7 @@ class WSChangeObserver {
      * Registers artifact and maps to destination if corresponding LSP destination is listening
      */
     void onChangeReported(String artifactRelPath, String saveDir) {
-        String wsKey = "ws" + File.separator + artifactRelPath;
+        String wsKey = "ws/" + artifactRelPath;
         String artifactUrl = saveDir + artifactRelPath;
         LOG.info(String.format("WS Sync Observer ws key %s artifact %s", wsKey, artifactUrl.substring(artifactUrl.lastIndexOf('/') + 1)));
         lspDestinations.entrySet().stream()
