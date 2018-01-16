@@ -5,39 +5,38 @@ const assert = require("chai").assert;
 const expect = require("chai").expect;
 const request = require('request');
 const rp = require('request-promise');
-const sleep = require('sleep');
-
+const sleep = require('thread-sleep');
 
 const aSubscribers = [];
 
 describe('WebIDE reload test', function () {
-	
+	this.timeout(20000);
+
 	function onMessage(msg) {
 		console.log("Receiving message: " + msg);
 		if ( msg.startsWith("Content-Length:") ) {
-			var body = msg.substr(msg.indexOf("{"));
-			var mObj = JSON.parse(body);
+			let body = msg.substr(msg.indexOf("{"));
+			let mObj = JSON.parse(body);
 
 			// Find subscriber
-			var indexFound = -1;
+			let indexFound = -1;
 			aSubscribers.forEach(function(oSubscr,index) {
 				if (oSubscr.method === mObj.method) {
 					indexFound = index;
 					oSubscr.callback(mObj);
 				}
 			});
-			if ( indexFound != -1 ) {
+			if ( indexFound !== -1 ) {
 				delete aSubscribers[indexFound];
 			}
-
 		}
 	}
 	
 	function openAndClose() {
-		var ws_o = null;
-		var d = new Date();
-		var milliSec = d.getTime() + 60 * 60 * 1000;
-	    var tokenSync = {
+		let ws_o = null;
+		let d = new Date();
+		let milliSec = d.getTime() + 60 * 60 * 1000;
+	    let tokenSync = {
 		    method: "POST",
 		    uri: "http://localhost:8080/UpdateToken/?expiration=" + milliSec + "&token=12345",
 		    headers: {
@@ -49,13 +48,13 @@ describe('WebIDE reload test', function () {
 	    return PromiseTimeout.timeout(new Promise(function(resolve, reject){
 		    rp(tokenSync).then(function(parsedResp) {
 		    	console.log("Open WS after Sec Token sent");
-	            var subprotocol = ["access_token", "12345"];
-	            var ws_o = new WebSocket('ws://localhost:8080/LanguageServer/ws/lang1', subprotocol);
+	            let subprotocol = ["access_token", "12345"];
+	            let ws_o = new WebSocket('ws://localhost:8080/LanguageServer/ws/lang1', subprotocol);
 	            ws_o.on('open',function open(){
 	                let ws = ws_o;
 		            aSubscribers.push({ method: "protocol/Ready", callback: function(msg){
 		            	console.log("Connect WS Test - Ready received!");
-		                sleep.msleep(1000);
+		                sleep(1000);
 		                ws.on('close',function(){
 		                	resolve(true);
 		                });
@@ -67,33 +66,28 @@ describe('WebIDE reload test', function () {
 			    reject(err);
 		    });
 		}),10000);
-	};
+	}
 
 	function connectWS() {
-		var ws = null;
+		let ws = null;
 	    return PromiseTimeout.timeout(new Promise(function(resolve, reject){
 		    	console.log("Open WS ");
-	            var subprotocol = ["access_token", "12345"];
-	            var ws_o1 = new WebSocket('ws://localhost:8080/LanguageServer/ws/lang1?lsp_timeout=500', subprotocol);
+	            let subprotocol = ["access_token", "12345"];
+	            let ws_o1 = new WebSocket('ws://localhost:8080/LanguageServer/ws/lang1?lsp_timeout=500', subprotocol);
 	            ws_o1.on('open',function open(){
 	                let ws = ws_o1;
-	                
 		            aSubscribers.push({ method: "protocol/Ready", callback: function(msg){
 		            	console.log("Connect WS Test - Ready received!");
 		                resolve(ws);
 		            }});
-		            
-
 	                ws.on('message',onMessage);
 	            })
-	            
  		}),10000);
-		
 	}
 	
 	function isAliveWS(ws) {
 		console.log("TEST - Check for Mirror");
-	    var testMessage = "Content-Length: 113\r\n\r\n" +
+	    let testMessage = "Content-Length: 113\r\n\r\n" +
 	        "{\r\n" +
 	        "\"jsonrpc\": \"2.0\",\r\n" +
 	        "\"id\" : \"2\",\r\n" +
@@ -108,7 +102,6 @@ describe('WebIDE reload test', function () {
             }});
             ws.send(testMessage);
         });
-		
 	}
 
 	it('Check for Reload WebIDE', function() {
@@ -124,9 +117,9 @@ describe('WebIDE reload test', function () {
 	});
 
 	it('Check for re-enter due short disconnect WebIDE', function() {
-		var d = new Date();
-		var milliSec = d.getTime() + 60 * 60 * 1000;
-	    var tokenSync = {
+		let d = new Date();
+		let milliSec = d.getTime() + 60 * 60 * 1000;
+	    let tokenSync = {
 		    method: "POST",
 		    uri: "http://localhost:8080/UpdateToken/?expiration=" + milliSec + "&token=12345",
 		    headers: {
@@ -143,37 +136,34 @@ describe('WebIDE reload test', function () {
 				ws1.on('close',function() {
 					console.log("Test - close WS1 OK");
 				});
-				sleep.msleep(100);
+				sleep(100);
 				return connectWS().then(function(ws2){
 					ws2.on('close',function() {
 						console.log("Test - close WS2 OK");
 					});
-					sleep.msleep(100);
+					sleep(100);
 					// Check for alive
 					console.log("Test - closing both WS");
 					ws1.close();
-					sleep.msleep(100);
+					sleep(100);
 					
 					return isAliveWS(ws2)
 					.then(function(echoMsg) {
 						console.log("Echo succeeded - WS2 is alive");
 						expect(ws2.readyState).to.equal(1);
 						ws2.close();
-						sleep.msleep(100);
+						sleep(100);
 						return Promise.resolve();
-						
 					})
 					.catch(function() {
 						ws2.close();
 						assert.fail("Mirror failed - reenter socket closed");
-						sleep.msleep(100);
+						sleep(100);
 						return Promise.reject();
 					});
 					
 				})
 			})
 		});
-		
 	});
-
 });

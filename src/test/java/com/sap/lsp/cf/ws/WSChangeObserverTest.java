@@ -5,7 +5,6 @@ import com.sap.lsp.cf.ws.WSChangeObserver.LSPDestination;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -18,7 +17,7 @@ public class WSChangeObserverTest {
     public void notifySingleDestination() {
         final Map<String, WSChangeObserver.LSPDestination> destinations = new HashMap<>();
         final WebSocketClient wsClient = Mockito.mock(WebSocketClient.class);
-        destinations.put(File.separator + "myPath:lang1", new LSPDestination("myPath", wsClient));
+        destinations.put("/myPath:lang1", new LSPDestination("myPath", wsClient));
         final WSChangeObserver wsChangeObserver = new WSChangeObserver(ChangeType.CHANGE_CREATED, destinations);
         wsChangeObserver.onChangeReported("myPath/a/b/c", "home/");
         wsChangeObserver.notifyLSP();
@@ -29,7 +28,7 @@ public class WSChangeObserverTest {
     public void notifyMultipleChanges() {
         final Map<String, WSChangeObserver.LSPDestination> destinations = new HashMap<>();
         final WebSocketClient wsClient = Mockito.mock(WebSocketClient.class);
-        destinations.put(File.separator + "myPath:lang1", new LSPDestination("myPath", wsClient));
+        destinations.put("/myPath:lang1", new LSPDestination("myPath", wsClient));
         final WSChangeObserver wsChangeObserver = new WSChangeObserver(ChangeType.CHANGE_CREATED, destinations);
         wsChangeObserver.onChangeReported("myPath/a/b/c", "home/");
         wsChangeObserver.onChangeReported("myPath/d/e/f", "home/");
@@ -42,8 +41,8 @@ public class WSChangeObserverTest {
         final Map<String, WSChangeObserver.LSPDestination> destinations = new HashMap<>();
         final WebSocketClient wsClient1 = Mockito.mock(WebSocketClient.class);
         final WebSocketClient wsClient2 = Mockito.mock(WebSocketClient.class);
-        destinations.put(File.separator + "myPath:lang1", new LSPDestination("myPath", wsClient1));
-        destinations.put(File.separator + "myPath:lang2", new LSPDestination("myPath", wsClient2));
+        destinations.put("/myPath:lang1", new LSPDestination("myPath", wsClient1));
+        destinations.put("/myPath:lang2", new LSPDestination("myPath", wsClient2));
         final WSChangeObserver wsChangeObserver = new WSChangeObserver(ChangeType.CHANGE_CREATED, destinations);
         wsChangeObserver.onChangeReported("myPath/a/b/c", "home/");
         wsChangeObserver.notifyLSP();
@@ -57,8 +56,8 @@ public class WSChangeObserverTest {
         final Map<String, WSChangeObserver.LSPDestination> destinations = new HashMap<>();
         final WebSocketClient wsClient1 = Mockito.mock(WebSocketClient.class);
         final WebSocketClient wsClient2 = Mockito.mock(WebSocketClient.class);
-        destinations.put(File.separator + "myPath1:lang1", new LSPDestination("myPath", wsClient1));
-        destinations.put(File.separator + "myPath2:lang2", new LSPDestination("myPath", wsClient2));
+        destinations.put("/myPath1:lang1", new LSPDestination("myPath", wsClient1));
+        destinations.put("/myPath2:lang2", new LSPDestination("myPath", wsClient2));
         final WSChangeObserver wsChangeObserver = new WSChangeObserver(ChangeType.CHANGE_CREATED, destinations);
         wsChangeObserver.onChangeReported("myPath1/a/b/c", "home/");
         wsChangeObserver.notifyLSP();

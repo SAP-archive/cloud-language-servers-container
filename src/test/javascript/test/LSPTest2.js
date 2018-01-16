@@ -7,11 +7,12 @@ const request = require('request');
 const rp = require('request-promise');
 
 let ws;
-let closePromise
+let closePromise;
 let openPromise;
 const aSubscribers = [];
 
 describe('Protocol test (LSP is socket server)', function () {
+	this.timeout(20000);
 
 	function onMessage(msg) {
 		console.log("Receiving message: " + msg);
