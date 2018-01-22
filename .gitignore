@@ -1,5 +1,13 @@
 target/
 src/test/javascript/node_modules/
-.idea
-!.idea/runConfigurations
+/.idea/workspace.xml
+/.idea/libraries/
+/.idea/artifacts/
 /src/test/javascript/package-lock.json
+/.idea/compiler.xml
+/.idea/cloud-language-servers-container.iml
+/.idea/misc.xml
+/.idea/modules.xml
+/.idea/vcs.xml
+/.idea/jsLibraryMappings.xml
+/.idea/encodings.xml

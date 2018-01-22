@@ -1,0 +1,57 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="LSPServerCF [jetty:run]" type="MavenRunConfiguration" factoryName="Maven">
+    <MavenSettings>
+      <option name="myGeneralSettings" />
+      <option name="myRunnerSettings">
+        <MavenRunnerSettings>
+          <option name="environmentProperties">
+            <map>
+              <entry key="DiToken" value="THEDITOKEN" />
+              <entry key="LSPLANG1_STDIN_PORT" value="8991" />
+              <entry key="LSPLANG1_STDOUT_PORT" value="8990" />
+              <entry key="LSPLANG1_exec" value="util\EchoLauncher1.bat" />
+              <entry key="LSPLANG1_inport" value="8991" />
+              <entry key="LSPLANG1_outport" value="8990" />
+              <entry key="LSPLANG1_protocol" value="socket" />
+              <entry key="LSPLANG1_workdir" value="util\" />
+              <entry key="LSPLANG2_clientport" value="8765" />
+              <entry key="LSPLANG2_exec" value="util\EchoLauncher2.bat" />
+              <entry key="LSPLANG2_protocol" value="socket-client" />
+              <entry key="LSPLANG2_workdir" value="util\" />
+              <entry key="basedir" value="\src\test\" />
+              <entry key="lspservers" value="lang1,lang2" />
+            </map>
+          </option>
+          <option name="jreName" value="#USE_PROJECT_JDK" />
+          <option name="mavenProperties">
+            <map />
+          </option>
+          <option name="passParentEnv" value="true" />
+          <option name="runMavenInBackground" value="true" />
+          <option name="skipTests" value="false" />
+          <option name="vmOptions" value="" />
+        </MavenRunnerSettings>
+      </option>
+      <option name="myRunnerParameters">
+        <MavenRunnerParameters>
+          <option name="profiles">
+            <set />
+          </option>
+          <option name="goals">
+            <list>
+              <option value="jetty:run" />
+            </list>
+          </option>
+          <option name="profilesMap">
+            <map>
+              <entry key="integration-test" value="true" />
+            </map>
+          </option>
+          <option name="resolveToWorkspace" value="false" />
+          <option name="workingDirPath" value="$PROJECT_DIR$" />
+        </MavenRunnerParameters>
+      </option>
+    </MavenSettings>
+    <method />
+  </configuration>
+</component>
