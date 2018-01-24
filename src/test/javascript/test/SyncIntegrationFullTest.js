@@ -65,7 +65,7 @@ describe('Sync Integration Full loop Test', function () {
 
 		PromiseTimeout.timeout(new Promise(function (resolve, reject) {
 
-			rp(tokenSync).then(function (parsedResp) {
+			rp(tokenSync).then(function () {
 				console.log("Open WS after Sec Token sent");
 				let subprotocol = ["access_token", "12345"];
 				let ws_o = new WebSocket('ws://localhost:8080/LanguageServer/ws~myProject~myModule/lang1', subprotocol);
