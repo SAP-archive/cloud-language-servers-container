@@ -175,18 +175,6 @@ describe('Sync Integration Full loop Test', function () {
 			});
 			let form = req.form();
 			form.append('file', fs.createReadStream(zipFilePath));
-		}).then(function () {
-			// putting file that already exists should fail
-			return new Promise(function (resolve, reject) {
-				let req = request.put(pathPrefix + modulePath + '/java/test.java', COMMON_OPTIONS, function (err, resp, body) {
-					console.log("error: " + err);
-					assert.ok(resp);
-					assert.equal(403, resp.statusCode, "Duplicate file creation err ");
-					resolve(resp);
-				});
-				let form = req.form();
-				form.append('file', fs.createReadStream(zipFilePath));
-			});
 		}).then(deleteSingleFile);
 	});
 
