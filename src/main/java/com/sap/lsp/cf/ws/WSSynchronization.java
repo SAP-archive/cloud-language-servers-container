@@ -168,11 +168,8 @@ public class WSSynchronization extends HttpServlet {
         artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1);
         File destination = new File(FilenameUtils.normalize(this.saveDir + artifactRelPath));
         if (destination.exists()) {
-            LOG.info("File to be added already exist: " + destination.getPath());
-            response.setContentType("application/json");
-            response.getWriter().append(String.format("{ \"error\": \"already exists %s\"}", destination.getPath()));
-            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            return;
+            LOG.warning("File to be added already exist: " + destination.getPath() +
+                    ", can happen on project creation flow. Extracting new version...");
         }
         // Expected: one part containing zip
         try {
