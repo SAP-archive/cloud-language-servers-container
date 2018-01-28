@@ -37,11 +37,13 @@ In order to build and run cloud-language-servers-container in CloudFoundry follo
 - Use your favorite IDE to remote debug localhost with port 8000
 
 ## Local Integration Test in Windows
-Mocha integration tests are dependent on ruby mock language server.
+Mocha integration tests can be run from intellij run configuration:
 
-* Set variables in user env for all variables configured in [travis](https://github.com/SAP/cloud-language-servers-container/edit/master/.travis.yml)
-* install ruby using [RubyInstaller](https://rubyinstaller.org/downloads/)
-* `mvn install -Pintegration-test`
+* Run or debug the run configuration `LSPServerCF [jetty:run]`
+* Go to one of the suites under `src/test/javascript/test` and run/debug using mocha
+
+## Snapshots deployment job
+https://jaas.wdf.sap.corp:50311/job/LSPServerCF_Deploy_Snapshot/
   
 ## Run server locally
   `mvn jetty:run -Pintegration-test`
@@ -60,9 +62,8 @@ For bugs, questions and ideas for enhancement please open an issue in github.
 
 # To-Do (upcoming changes)
 
-* Coplete travis integration
 * Setup official releases
-* Make integration tests also work on windows
+* Make integration test LSPTest2.js to run with node instead of ruby
 * Easy automated way to install cloud-language-servers-container together with language servers on local machine
 * Remove CloudFoundry specific code
 
