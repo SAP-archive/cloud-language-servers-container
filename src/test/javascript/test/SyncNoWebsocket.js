@@ -19,7 +19,7 @@ describe('Sync Integration Test - no websocket', function () {
 	this.timeout(20000);
 
 	let folderPath = "";
-	let filePath = "";
+	let zipFilePath = path.resolve(__dirname, '../resources/putTest.zip');
 
 	afterEach(function () {
 		try {
@@ -37,7 +37,6 @@ describe('Sync Integration Test - no websocket', function () {
 		});
 	}
 
-
 	function onDeleteResponse(filePath, err, res, resolve) {
 		assert.ok(!err);
 		assert.ok(res);
@@ -48,33 +47,35 @@ describe('Sync Integration Test - no websocket', function () {
 
 	//Initial sync and delete file before every test
 	beforeEach(function () {
-		let zipFilePath = path.resolve(__dirname, '../resources/putTest.zip');
 		return new Promise(function (resolve) {
 			let req = request.put(pathPrefix, COMMON_OPTIONS, function (err, res, body) {
 				assert.ok(!err);
 				assert.ok(res);
 				folderPath = body.substring(7);
-				filePath = path.join(path.normalize(folderPath + modulePath + "/java/test.java"));
+				let initialSyncFilePath = path.join(path.normalize(folderPath + modulePath + "/java/test.java"));
 				console.log("Put resp: " + body);
 				assert.equal(201, res.statusCode, "File creation error ");
-				assert.ok(fs.existsSync(filePath));
+				assert.ok(fs.existsSync(initialSyncFilePath));
 				resolve(res);
 			});
 			let form = req.form();
 			form.append('file', fs.createReadStream(zipFilePath));
-		}).then(function () {
-			// putting file that already exists should fail
-			return new Promise(function (resolve) {
-				let req = request.put(pathPrefix + modulePath + '/java/test.java', COMMON_OPTIONS, function (err, res) {
-					console.log("error: " + err);
-					console.log("res: " + res);
-					assert.ok(res);
-					assert.equal(res.statusCode, 403);
-					resolve(res);
-				});
-				req.form().append('file', fs.createReadStream(zipFilePath));
+		});
+	});
+
+	it('Adding file that already exists should NOT fail (could happen in project creation flow for example)', function () {
+		return new Promise(function (resolve) {
+			let req = request.put(pathPrefix + modulePath + '/java/test.java', COMMON_OPTIONS, function (err, res) {
+				console.log("error: " + err);
+				console.log("res: " + res);
+				let initialSyncFilePath = path.join(path.normalize(folderPath + modulePath + "/java/test.java"));
+				assert.ok(res);
+				assert.equal(201, res.statusCode, "File creation error ");
+				assert.ok(fs.existsSync(initialSyncFilePath));
+				resolve(res);
 			});
-		}).then(deletePath.bind(undefined, '/java/test.java', filePath));
+			req.form().append('file', fs.createReadStream(zipFilePath));
+		});
 	});
 
 	it('Update file that does not exist should fail', () => {
