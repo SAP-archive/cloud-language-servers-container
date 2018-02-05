@@ -193,7 +193,7 @@ public class WSSynchronization extends HttpServlet {
     }
 
     /**
-     * @see HttpServlet#doPut(HttpServletRequest request, HttpServletResponse response)
+     * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
      */
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         // Check if it is LSP registration
@@ -231,7 +231,7 @@ public class WSSynchronization extends HttpServlet {
     }
 
     /**
-     * @see HttpServlet#doPut(HttpServletRequest request, HttpServletResponse response)
+     * @see HttpServlet#doDelete(HttpServletRequest request, HttpServletResponse response)
      */
     protected void doDelete(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         if (!checkSync()) {
@@ -288,36 +288,29 @@ public class WSSynchronization extends HttpServlet {
         List<String> extracted = new ArrayList<>();
 
         try (ZipInputStream zipInputStream = new ZipInputStream(zipStream)) {
-            zipentry = zipInputStream.getNextEntry();
-            while (zipentry != null) {
-                int n;
+            while ((zipentry = zipInputStream.getNextEntry()) != null) {
                 File newFile = new File(destination, zipentry.getName());
                 LOG.info("UNZIP Creating " + newFile.getAbsolutePath());
 
                 if (zipentry.isDirectory()) {
-                    if (newFile.exists()) {
-                        zipentry = zipInputStream.getNextEntry();
-                        continue;
+                    if (!newFile.exists()) {
+                        newFile.mkdirs();
                     }
-
-                    if (!newFile.mkdirs()) {
-                        LOG.warning("Directory creation error");
-                        throw new IOException("Directory creation error");
-                    } else {
-                        zipentry = zipInputStream.getNextEntry();
-                        continue;
+                } else { // zipentry is a file
+                    File parentFile = newFile.getParentFile();
+                    if (!parentFile.exists()) {
+                	    parentFile.mkdirs();
                     }
+                    try (FileOutputStream fileoutputstream = new FileOutputStream(newFile)) {
+                        int n;
+                        while ((n = zipInputStream.read(buf, 0, 1024)) > -1) {
+                            fileoutputstream.write(buf, 0, n);
+                        }
+                    }
+                    extracted.add(zipentry.getName());
                 }
-                try (FileOutputStream fileoutputstream = new FileOutputStream(newFile)) {
-                    while ((n = zipInputStream.read(buf, 0, 1024)) > -1) {
-                        fileoutputstream.write(buf, 0, n);
-                    }
-                }
-                // relative path
-                extracted.add(zipentry.getName());
+                       
                 zipInputStream.closeEntry();
-                if (!newFile.exists()) LOG.warning("File creation error");
-                zipentry = zipInputStream.getNextEntry();
             }
         } catch (IOException e) {
             LOG.warning("UNZIP error: " + e.toString());
