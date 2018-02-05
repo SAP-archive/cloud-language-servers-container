@@ -178,16 +178,13 @@ public class WSSynchronization extends HttpServlet {
             if (extract(part.getInputStream(), changeObserver)) {
                 changeObserver.notifyLSP();
                 response.setContentType("application/json");
-                response.getWriter().append(String.format("{ \"created\": \"%s\"}", artifactRelPath));
                 response.setStatus(HttpServletResponse.SC_CREATED);
             } else {
                 response.setContentType("application/json");
-                response.getWriter().append(String.format("{ \"error\": \"conflict %s\"}", artifactRelPath));
                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             }
         } catch (NoSuchElementException ePart) {
             response.setContentType("application/json");
-            response.getWriter().append(String.format("{ \"error\": \"exception for %s\"}", artifactRelPath));
             response.setStatus(HttpServletResponse.SC_NOT_MODIFIED);
         }
     }
