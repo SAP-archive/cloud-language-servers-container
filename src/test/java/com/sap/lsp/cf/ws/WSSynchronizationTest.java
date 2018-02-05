@@ -1,8 +1,35 @@
 package com.sap.lsp.cf.ws;
 
-import com.sap.lsp.cf.ws.WSChangeObserver.LSPDestination;
+import static org.easymock.EasyMock.expect;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.times;
+import static org.powermock.api.easymock.PowerMock.replayAll;
+
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.nio.file.Paths;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import java.util.logging.Logger;
+
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.Part;
+
 import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -11,22 +38,7 @@ import org.powermock.api.easymock.PowerMock;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.Part;
-import java.io.*;
-import java.nio.file.Paths;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Map;
-import java.util.logging.Logger;
-
-import static org.easymock.EasyMock.expect;
-import static org.junit.Assert.*;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.times;
-import static org.powermock.api.easymock.PowerMock.replayAll;
+import com.sap.lsp.cf.ws.WSChangeObserver.LSPDestination;
 
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({WSSynchronization.class, WebSocketClient.class})
@@ -40,10 +52,6 @@ public class WSSynchronizationTest {
     private static final String ARTIFACT_PATH = "/myProject/myModule/java/test.java";
 
     private static final String NEW_ARTIFACT_PATH = "/newProject/newModule/java1/test1.java";
-
-    private static int NO_CONTENT_STATS = 1;
-    private static int CREATED_CALLS = 1;
-    private static int OK_STATS = 1;
 
     static WebSocketClient wsClient = Mockito.mock(WebSocketClient.class);
 
@@ -64,20 +72,23 @@ public class WSSynchronizationTest {
         wd = testUtil.getWdPath().toString();
         cut.setSaveDir(wd);
         cut.init();
-
-        response = Mockito.spy(HttpServletResponse.class);
-        PrintWriter responseWriter = Mockito.mock(PrintWriter.class);
-        Mockito.when(responseWriter.append(any(String.class))).thenReturn(responseWriter);
-        Mockito.when(response.getWriter()).thenReturn(responseWriter);
     }
 
     @AfterClass
     public static void tearDownAfterClass() throws Exception {
     }
+    
+    @Before
+    public void setup() throws IOException {
+    	 response = Mockito.spy(HttpServletResponse.class);
+         PrintWriter responseWriter = Mockito.mock(PrintWriter.class);
+         Mockito.when(responseWriter.append(any(String.class))).thenReturn(responseWriter);
+         Mockito.when(response.getWriter()).thenReturn(responseWriter);
+    }
 
     @After
-    public void cleanUp() throws Exception {
-        // cut.cleanUpWS(Paths.get(new File(wd).getPath()));
+    public void tearDown() throws Exception {
+        cut.cleanUpWS(Paths.get(new File(wd).getPath()));
     }
 
     @Test
@@ -95,15 +106,13 @@ public class WSSynchronizationTest {
 
         String workspaceSaveDir = testUtil.getWdPath().toString();
         cut.initialSync(requestInit, response, "file://" + workspaceSaveDir, workspaceSaveDir);
-        CREATED_CALLS++;
 
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         Mockito.when(request.getServletPath()).thenReturn(SERVLET_PATH);
         Mockito.when(request.getRequestURI()).thenReturn(SERVLET_PATH);
 
         cut.doGet(request, response);
-        Mockito.verify(response, times(OK_STATS)).setStatus(HttpServletResponse.SC_OK);
-        OK_STATS++;
+        Mockito.verify(response, times(1)).setStatus(HttpServletResponse.SC_OK);
     }
 
     @Test
@@ -115,8 +124,7 @@ public class WSSynchronizationTest {
 
         cut.doGet(request, response);
 
-        Mockito.verify(response, times(NO_CONTENT_STATS)).setStatus(HttpServletResponse.SC_NO_CONTENT);
-        NO_CONTENT_STATS++;
+        Mockito.verify(response, times(1)).setStatus(HttpServletResponse.SC_NO_CONTENT);
     }
 
     @Test
@@ -131,15 +139,14 @@ public class WSSynchronizationTest {
         Mockito.when(request.getParts()).thenReturn(parts);
 
         cut.doPut(request, response);
-        Mockito.verify(response, times(CREATED_CALLS)).setStatus(HttpServletResponse.SC_CREATED);
-        CREATED_CALLS++;
+        Mockito.verify(response, times(1)).setStatus(HttpServletResponse.SC_CREATED);
         assertTrue("File create ", new File(wd + File.separator + "myProject"
                 + File.separator + "myModule"
                 + File.separator + "java"
                 + File.separator + "test.java").exists());
         assertTrue("File create ", new File(wd + File.separator + ".sync").exists());
     }
-
+    
     @Test
     public void testNewProject() throws IOException, ServletException {
         HttpServletRequest requestInit = Mockito.mock(HttpServletRequest.class);
@@ -150,7 +157,6 @@ public class WSSynchronizationTest {
 
         String workspaceSaveDir = testUtil.getWdPath().toString();
         cut.initialSync(requestInit, response, "file://" + workspaceSaveDir, workspaceSaveDir);
-        CREATED_CALLS++;
 
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         Mockito.when(request.getServletPath()).thenReturn(SERVLET_PATH);
@@ -162,15 +168,42 @@ public class WSSynchronizationTest {
         Mockito.when(request.getParts()).thenReturn(parts);
 
         cut.doPut(request, response);
-        Mockito.verify(response, times(CREATED_CALLS)).setStatus(HttpServletResponse.SC_CREATED);
-        CREATED_CALLS++;
+        Mockito.verify(response, times(2)).setStatus(HttpServletResponse.SC_CREATED);
         //'/newProject/newModule/java1/test1.java'
         assertTrue("File create ", new File(wd + File.separator + "newProject"
                 + File.separator + "newModule"
                 + File.separator + "java1"
                 + File.separator + "test1.java").exists());
     }
+    
+    @Test
+    public void testNewProjectWhenZipContainsOnlyFullPathEntry() throws IOException, ServletException {
+    	 HttpServletRequest requestInit = Mockito.mock(HttpServletRequest.class);
+         Part part1 = Mockito.mock(Part.class);
+         Mockito.when(part1.getInputStream()).thenReturn(TestUtils.getZipStream("putTest.zip"));
+         Collection<Part> parts = Collections.singleton(part1);
+         Mockito.when(requestInit.getParts()).thenReturn(parts);
 
+         String workspaceSaveDir = testUtil.getWdPath().toString();
+         cut.initialSync(requestInit, response, "file://" + workspaceSaveDir, workspaceSaveDir);
+
+         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+         Mockito.when(request.getServletPath()).thenReturn(SERVLET_PATH);
+         Mockito.when(request.getRequestURI()).thenReturn(SERVLET_PATH + NEW_ARTIFACT_PATH);
+         part1 = Mockito.mock(Part.class);
+
+         Mockito.when(part1.getInputStream()).thenReturn(TestUtils.getZipStream("newProjectWithOnlyFullPAthEntry.zip"));
+         parts = Collections.singleton(part1);
+         Mockito.when(request.getParts()).thenReturn(parts);
+
+         cut.doPut(request, response);
+         Mockito.verify(response, times(2)).setStatus(HttpServletResponse.SC_CREATED);
+         assertTrue("File create ", new File(wd + File.separator + "newProject"
+                 + File.separator + "newModule"
+                 + File.separator + "java1"
+                 + File.separator + "test1.java").exists());
+    }
+    
     @Test
     public void testDoPutSyncLost() throws IOException, ServletException {
         cut.cleanUpWS(Paths.get(new File(wd).getPath()));
@@ -186,8 +219,7 @@ public class WSSynchronizationTest {
 
         cut.doPut(request, response);
 
-        Mockito.verify(response, times(NO_CONTENT_STATS)).setStatus(HttpServletResponse.SC_NO_CONTENT);
-        NO_CONTENT_STATS++;
+        Mockito.verify(response, times(1)).setStatus(HttpServletResponse.SC_NO_CONTENT);
     }
 
 
@@ -201,7 +233,6 @@ public class WSSynchronizationTest {
 
         String workspaceSaveDir = testUtil.getWdPath().toString();
         cut.initialSync(requestInit, response, "file://" + workspaceSaveDir, workspaceSaveDir);
-        CREATED_CALLS++;
 
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         Mockito.when(request.getRequestURI()).thenReturn(SERVLET_PATH + ARTIFACT_PATH);
@@ -212,8 +243,7 @@ public class WSSynchronizationTest {
         Mockito.when(request.getParts()).thenReturn(parts);
 
         cut.doPost(request, response);
-        Mockito.verify(response, times(OK_STATS)).setStatus(HttpServletResponse.SC_OK);
-        OK_STATS++;
+        Mockito.verify(response, times(1)).setStatus(HttpServletResponse.SC_OK);
         assertTrue("File create ", new File(wd + File.separator + "myProject"
                 + File.separator + "myModule"
                 + File.separator + "java"
@@ -234,8 +264,7 @@ public class WSSynchronizationTest {
 
         cut.doPost(request, response);
 
-        Mockito.verify(response, times(NO_CONTENT_STATS)).setStatus(HttpServletResponse.SC_NO_CONTENT);
-        NO_CONTENT_STATS++;
+        Mockito.verify(response, times(1)).setStatus(HttpServletResponse.SC_NO_CONTENT);
     }
 
 
@@ -249,15 +278,13 @@ public class WSSynchronizationTest {
 
         String workspaceSaveDir = testUtil.getWdPath().toString();
         cut.initialSync(requestInit, response, "file://" + workspaceSaveDir, workspaceSaveDir);
-        CREATED_CALLS++;
 
         HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
         Mockito.when(request.getRequestURI()).thenReturn(SERVLET_PATH + ARTIFACT_PATH);
         Mockito.when(request.getServletPath()).thenReturn(SERVLET_PATH);
 
         cut.doDelete(request, response);
-        Mockito.verify(response, times(OK_STATS)).setStatus(HttpServletResponse.SC_OK);
-        OK_STATS++;
+        Mockito.verify(response, times(1)).setStatus(HttpServletResponse.SC_OK);
         assertFalse("File create ", new File(wd + File.separator + "myProject"
                 + File.separator + "myModule"
                 + File.separator + "java"
@@ -273,8 +300,7 @@ public class WSSynchronizationTest {
         Mockito.when(request.getServletPath()).thenReturn(SERVLET_PATH);
 
         cut.doDelete(request, response);
-        Mockito.verify(response, times(NO_CONTENT_STATS)).setStatus(HttpServletResponse.SC_NO_CONTENT);
-        NO_CONTENT_STATS++;
+        Mockito.verify(response, times(1)).setStatus(HttpServletResponse.SC_NO_CONTENT);
     }
 
     @Test
