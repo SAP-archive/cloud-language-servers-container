@@ -1,11 +1,33 @@
 package com.sap.lsp.cf.ws;
 
-import com.sap.lsp.cf.ws.WSChangeObserver.ChangeType;
-import com.sap.lsp.cf.ws.WSChangeObserver.LSPDestination;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.FilenameUtils;
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.FileVisitOption;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Logger;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
-import javax.json.*;
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonReader;
+import javax.json.JsonString;
+import javax.json.JsonValue;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.MultipartConfig;
 import javax.servlet.annotation.WebServlet;
@@ -13,18 +35,12 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.Part;
-import java.io.*;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.FileVisitOption;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Logger;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
+
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
+
+import com.sap.lsp.cf.ws.WSChangeObserver.ChangeType;
+import com.sap.lsp.cf.ws.WSChangeObserver.LSPDestination;
 
 /**
  * Servlet implementation class WSSynchronization
@@ -178,22 +194,19 @@ public class WSSynchronization extends HttpServlet {
             if (extract(part.getInputStream(), changeObserver)) {
                 changeObserver.notifyLSP();
                 response.setContentType("application/json");
-                response.getWriter().append(String.format("{ \"created\": \"%s\"}", artifactRelPath));
                 response.setStatus(HttpServletResponse.SC_CREATED);
             } else {
                 response.setContentType("application/json");
-                response.getWriter().append(String.format("{ \"error\": \"conflict %s\"}", artifactRelPath));
-                response.setStatus(HttpServletResponse.SC_CONFLICT);
+                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             }
         } catch (NoSuchElementException ePart) {
             response.setContentType("application/json");
-            response.getWriter().append(String.format("{ \"error\": \"exception for %s\"}", artifactRelPath));
             response.setStatus(HttpServletResponse.SC_NOT_MODIFIED);
         }
     }
 
     /**
-     * @see HttpServlet#doPut(HttpServletRequest request, HttpServletResponse response)
+     * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
      */
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         // Check if it is LSP registration
@@ -231,7 +244,7 @@ public class WSSynchronization extends HttpServlet {
     }
 
     /**
-     * @see HttpServlet#doPut(HttpServletRequest request, HttpServletResponse response)
+     * @see HttpServlet#doDelete(HttpServletRequest request, HttpServletResponse response)
      */
     protected void doDelete(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         if (!checkSync()) {
@@ -286,38 +299,31 @@ public class WSSynchronization extends HttpServlet {
         byte[] buf = new byte[1024];
         ZipEntry zipentry;
         List<String> extracted = new ArrayList<>();
-
+		
         try (ZipInputStream zipInputStream = new ZipInputStream(zipStream)) {
-            zipentry = zipInputStream.getNextEntry();
-            while (zipentry != null) {
-                int n;
+            while ((zipentry = zipInputStream.getNextEntry()) != null) {
                 File newFile = new File(destination, zipentry.getName());
                 LOG.info("UNZIP Creating " + newFile.getAbsolutePath());
 
                 if (zipentry.isDirectory()) {
-                    if (newFile.exists()) {
-                        zipentry = zipInputStream.getNextEntry();
-                        continue;
+                    if (!newFile.exists()) {
+                        newFile.mkdirs();
                     }
-
-                    if (!newFile.mkdirs()) {
-                        LOG.warning("Directory creation error");
-                        throw new IOException("Directory creation error");
-                    } else {
-                        zipentry = zipInputStream.getNextEntry();
-                        continue;
+                } else { // zipentry is a file
+                    File parentFile = newFile.getParentFile();
+                    if (!parentFile.exists()) {
+                	    parentFile.mkdirs();
                     }
+                    try (FileOutputStream fileoutputstream = new FileOutputStream(newFile)) {
+                        int n;
+                        while ((n = zipInputStream.read(buf, 0, 1024)) > -1) {
+                            fileoutputstream.write(buf, 0, n);
+                        }
+                    }
+                    extracted.add(zipentry.getName());
                 }
-                try (FileOutputStream fileoutputstream = new FileOutputStream(newFile)) {
-                    while ((n = zipInputStream.read(buf, 0, 1024)) > -1) {
-                        fileoutputstream.write(buf, 0, n);
-                    }
-                }
-                // relative path
-                extracted.add(zipentry.getName());
+                       
                 zipInputStream.closeEntry();
-                if (!newFile.exists()) LOG.warning("File creation error");
-                zipentry = zipInputStream.getNextEntry();
             }
         } catch (IOException e) {
             LOG.warning("UNZIP error: " + e.toString());
