@@ -20,6 +20,7 @@ class LSPProcessManager {
     private static final String ENV_PIPE_IN = "pipein";
     private static final String ENV_IPC_CLIENT_PORT = "clientport";
     private static final String WS_KEY_DELIMITER = "~";
+    private static final String CHARSET_PREF = "charset=";
     private static final Logger LOG = Logger.getLogger(LSPProcessManager.class.getName());
 
     private static class OutputStreamHandler extends Thread {
@@ -46,22 +47,19 @@ class LSPProcessManager {
         }
 
         void parseHeader(String line, Headers headers) {
-            int sepIndex = line.indexOf(':');
+            int sepIndex = line.lastIndexOf(':');
             if (sepIndex >= 0) {
                 String key = line.substring(0, sepIndex).trim();
-                switch (key) {
-                    case CONTENT_LENGTH_HEADER:
-                        try {
-                            headers.contentLength = Integer.parseInt(line.substring(sepIndex + 1).trim());
-                        } catch (NumberFormatException e) {
-                            fireError(e);
-                        }
-                        break;
-                    case CONTENT_TYPE_HEADER: {
-                        int charsetIndex = line.indexOf("charset=");
-                        if (charsetIndex >= 0)
-                            headers.charset = line.substring(charsetIndex + 8).trim();
-                        break;
+                if (key.endsWith(CONTENT_LENGTH_HEADER)) {
+                    try {
+                        headers.contentLength = Integer.parseInt(line.substring(sepIndex + 1).trim());
+                    } catch (NumberFormatException e) {
+                        fireError(e);
+                    }
+                } else if (key.endsWith(CONTENT_TYPE_HEADER)) {
+                    int charsetIndex = line.indexOf(CHARSET_PREF);
+                    if (charsetIndex >= 0) {
+                        headers.charset = line.substring(charsetIndex + CHARSET_PREF.length()).trim();
                     }
                 }
             }
