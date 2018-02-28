@@ -153,7 +153,15 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
         LOG.info("LSP: onMessage is invoked: \n" + message);
         LOG.info(String.format("LSP: get Head Process for wsKey %s lang %s session %s", ws, lang, session.getId()));
         LSPProcess lspProc = procManager.getProcess(LSPProcessManager.processKey(ws, lang));
-        lspProc.enqueueCall(message);
+        try {
+            lspProc.enqueueCall(message);
+        } catch (LSPException e) {
+            try {
+                session.close(new CloseReason(CloseCodes.SERVICE_RESTART, "LSP process not available"));
+            } catch (IOException closeErr) {
+                LOG.severe("FATAL ERROR " + closeErr.getMessage());
+            }
+        }
     }
 
     @OnClose
