@@ -386,10 +386,10 @@ class LSPProcessManager {
 
         }
 
-        synchronized void enqueueCall(String message) {
+        synchronized void enqueueCall(String message) throws LSPException {
             if (process == null || !process.isAlive() || inWriter == null) {
                 LOG.warning(this.lang + "LSP is down");
-                return;
+                throw new LSPException();
             }
             inWriter.write(message);
             inWriter.flush();
