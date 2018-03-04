@@ -70,7 +70,7 @@ class WSChangeObserver {
                         .build())
                 .build();
         String body = bodyObj.toString();
-        return String.format("Content-Length: %d\r\n\r\n%s", body.length(), body);
+        return String.format("Content-Length: %d\r\n\r\n%s", body.getBytes().length, body);
     }
 
     void notifyLSP() {
