@@ -9,5 +9,11 @@ applications:
   env: 
     JAVA-OPTS: -agentlib:jdwp=transport=dt_socket,address=195.93.234.9:8000
     JBP_CONFIG_DEBUG: '{enabled: true}'
-    lspservers: java
+    lspservers: 'eslint,json,xml,java,cdx'
     DiToken: 5c2b4300-5603-4b72-a943-6e14131a2864
+    LSPCDX_URI: 'https://lsp-component-cds.cfapps.eu10.hana.ondemand.com/lsp.zip'
+    LSPXML_URI: 'https://lsp-component-xml-0-0-2.cfapps.eu10.hana.ondemand.com/xml-0.0.2.zip'
+    LSPJSON_URI: 'https://lsp-component-json.cfapps.eu10.hana.ondemand.com/ls.json/json.zip'
+    LSPJAVA_URI: 'https://lsp-component-java-0-12-1.cfapps.eu10.hana.ondemand.com/jdt_ls-0.12.1.tar.gz'
+    LSPESLINT_URI: 'https://lsp-component-eslint-0-0-2.cfapps.eu10.hana.ondemand.com/eslint-0.0.2.zip'
+    LSPESLINT_additionalNpmPackages: '{"@sap/eslint-plugin-webide-feature":"1.3.12"}'
