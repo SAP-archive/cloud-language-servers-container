@@ -1,0 +1,12 @@
+**/.settings/
+**/target/
+**/.mta/
+**/node_modules/
+**/node
+**/.che/
+**/.project
+**/.classpath
+**/*.mtar
+**/edmx/
+**/gen/
+**/.idea/

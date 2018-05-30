@@ -38,6 +38,8 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 
     private static Map<String, LangServerCtx> langContexts = new HashMap<>();
     private static final LSPProcessManager procManager = new LSPProcessManager(langContexts);
+    
+    private static boolean insecured; 
 
     static {
         if (System.getenv().containsKey(ENV_LSP_SERVERS)) {
@@ -46,6 +48,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
                 if (lang.length() > 0) langContexts.put(lang, new LangServerCtx(lang));
             }
         }
+        insecured = Boolean.parseBoolean(System.getenv("INSECURED"));
     }
 
     public LanguageServerWSEndPoint() {
@@ -212,6 +215,10 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
     private static final String DI_TOKEN_ENV = "DiToken";
 
     private void registerWSSyncListener(String procKey, String listenerPath, boolean onOff) {
+        if (insecured) {
+            return;
+        }
+
         String diToken = System.getenv(DI_TOKEN_ENV);
         if (diToken == null) {
             LOG.log(Level.WARNING, "WS notification listener registration skipped - missed Token");
@@ -246,6 +253,9 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
     }
 
     private boolean validateWSSecurityToken(String token) {
+        if (insecured) {
+            return true;
+        }
         Date date = new Date();
         Date expirationDate = new Date(Long.valueOf(System.getProperty("com.sap.lsp.cf.ws.expirationDate")));
         return (token.equals(System.getProperty("com.sap.lsp.cf.ws.token")) && date.before(expirationDate));

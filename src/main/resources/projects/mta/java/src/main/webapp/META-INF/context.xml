@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Context>
+<!-- Enables HDB support: provides JNDI lookup of JDBC datasource, remove comment if required
+  <Resource name="jdbc/DefaultDB" auth="Container" type="javax.sql.DataSource"
+    factory="com.sap.xs.jdbc.datasource.tomcat.TomcatDataSourceFactory" service="${service_name_for_DefaultDB}" />
+ -->
+</Context>
