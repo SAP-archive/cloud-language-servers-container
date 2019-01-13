@@ -78,7 +78,7 @@ public class WebSocketClient {
                 LOG.severe("sendText Error: " + e);
             }
         else {
-            throw new RuntimeException("Session closed");
+            LOG.severe("sendText canceled cause user session is closed");
         }
     }
 }
