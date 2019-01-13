@@ -171,7 +171,7 @@ public class WSSynchronization extends HttpServlet {
                 addNewFiles(request, response);
             }
         } catch (Exception e) {
-            LOG.severe("doPut failed: " + e +" Trace: "+e.getStackTrace());
+            LOG.severe("doPut failed: " + e + " Trace: " + e.getStackTrace());
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
     }
