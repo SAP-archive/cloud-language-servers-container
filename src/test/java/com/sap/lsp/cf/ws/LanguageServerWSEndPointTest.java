@@ -1,288 +1,188 @@
 package com.sap.lsp.cf.ws;
 
-import com.sap.lsp.cf.ws.LSPProcessManager.LSPProcess;
-import org.apache.http.HttpEntityEnclosingRequest;
-import org.apache.http.HttpHost;
-import org.apache.http.HttpRequest;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.ResponseHandler;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.conn.ClientConnectionManager;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.params.HttpParams;
-import org.apache.http.protocol.HttpContext;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.getAllServeEvents;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import javax.websocket.CloseReason;
 import javax.websocket.EndpointConfig;
 import javax.websocket.RemoteEndpoint;
 import javax.websocket.Session;
 import javax.websocket.server.HandshakeRequest;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.lang.reflect.Field;
-import java.net.URLDecoder;
-import java.util.*;
-import java.util.logging.Logger;
 
-import static org.easymock.EasyMock.expect;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.times;
-import static org.powermock.api.easymock.PowerMock.mockStatic;
-import static org.powermock.api.easymock.PowerMock.replayAll;
+import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.github.tomakehurst.wiremock.stubbing.ServeEvent;
+import com.sap.lsp.cf.ws.LSPProcessManager.LSPProcess;
 
-@RunWith(PowerMockRunner.class)
-@PrepareForTest({LangServerCtx.class, LanguageServerWSEndPoint.class, HttpClients.class})
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnit;
+import org.mockito.junit.MockitoRule;
+
 public class LanguageServerWSEndPointTest {
 
-    private static final Logger LOG = Logger.getLogger(LanguageServerWSEndPointTest.class.getName());
+    private static final String wsSynchronizationUrl = "/WSSynchronization";
+    private static String READY_MESSAGE = "Content-Length: 45\r\n\r\n"
+        + "{\"jsonrpc\": \"2.0\",\"method\": \"protocol/Ready\"}";
 
-    private static LanguageServerWSEndPoint cut = null;
+    private static LanguageServerWSEndPoint languageServerWSEndPoint = new LanguageServerWSEndPoint();
+
+    @Rule
+    public TemporaryFolder tempFolder = new TemporaryFolder();
+    @Rule
+    public MockitoRule rule = MockitoJUnit.rule();
+    @Rule
+    public WireMockRule wireMockRule = new WireMockRule(8080);
+
     @Mock
-    private static Session testSession = null;
+    private Session testSession;
     @Mock
-    private static EndpointConfig endpointConfig;
+    private EndpointConfig endpointConfig;
     @Mock
-    private static RemoteEndpoint.Basic remoteEndpointMock;
-    @Mock
-    private static LSPProcessManager.LSPProcess lspProcessMock;
+    private RemoteEndpoint.Basic remoteEndpoint;
 
-    private static CloseableHttpClient dummyHttpClient = new CloseableHttpClient() {
-
-        String regData;
-
-        @Override
-        public String execute(HttpUriRequest post, ResponseHandler handler) {
-            try {
-                InputStream contStream = ((HttpEntityEnclosingRequest) post).getEntity().getContent();
-                try (BufferedReader buffer = new BufferedReader(new InputStreamReader(contStream))) {
-                    this.setRegData(URLDecoder.decode(buffer.readLine(), "UTF-8"));
-                }
-            } catch (UnsupportedOperationException | IOException e) {
-                // Never happens - simulated
-                return "ERR";
-            }
-            return "OK";
-        }
-
-        @Override
-        public ClientConnectionManager getConnectionManager() {
-            return null;
-        }
-
-        @Override
-        public HttpParams getParams() {
-            return null;
-        }
-
-        @Override
-        public void close() throws IOException {
-        }
-
-        @Override
-        protected CloseableHttpResponse doExecute(HttpHost arg0, HttpRequest arg1, HttpContext arg2) throws IOException, ClientProtocolException {
-            return null;
-        }
-
-        public String getRegData() {
-            return regData;
-        }
-
-        void setRegData(String regData) {
-            this.regData = regData;
-        }
-    };
-
-    private static String READY_MESSAGE = "Content-Length: 45\r\n\r\n" +
-            "{\"jsonrpc\": \"2.0\",\"method\": \"protocol/Ready\"}";
-
-    private static String readyMessage;
-    private static String testMessage;
-    private static boolean cleanUpCall;
+    private static LSPProcessManager lspProcessManager;
+    private static LSPProcess lspProcess;
 
     @BeforeClass
-    public static void setUpBeforeClass() throws Exception {
-        LSPEndPointTestUtil testUtil = new LSPEndPointTestUtil();
-        String log = testUtil.createInfra();
-        LOG.info(log);
-        testUtil.MockServerContext();
-
-        Map<String, List<String>> reqParam = new HashMap<>();
-        testSession = Mockito.mock(Session.class);
-        Mockito.when(testSession.getRequestParameterMap()).thenReturn(reqParam);
-        Mockito.when(testSession.getId()).thenReturn("0");
-        Mockito.when(testSession.getNegotiatedSubprotocol()).thenReturn("access_token");
-
-        remoteEndpointMock = Mockito.mock(RemoteEndpoint.Basic.class);
-        remoteEndpointMock = Mockito.mock(RemoteEndpoint.Basic.class);
-        Mockito.doAnswer((Answer<Void>) invocation -> {
-            Object readyMsg = invocation.getArguments()[0];
-            readyMessage = (String) readyMsg;
-            return null;
-        }).when(remoteEndpointMock).sendText(any());
-
-        Mockito.when(testSession.getBasicRemote()).thenReturn(remoteEndpointMock);
-
-        endpointConfig = Mockito.mock(EndpointConfig.class);
-        Map<String, Object> reqProtocolMap = Collections.singletonMap(HandshakeRequest.SEC_WEBSOCKET_PROTOCOL, Collections.singletonList("access_token,12345"));
-        Mockito.when(endpointConfig.getUserProperties()).thenReturn(reqProtocolMap);
-
-        LSPProcessManager procManagerMock = Mockito.mock(LSPProcessManager.class);
-        lspProcessMock = Mockito.mock(LSPProcess.class);
-        doReturn(lspProcessMock).when(procManagerMock).createProcess(any(), any(), any(), any());
-        doReturn(lspProcessMock).when(procManagerMock).getProcess(any());
+    public static void setupBeforeClass() throws LSPException {
+        lspProcessManager = mock(LSPProcessManager.class);
+        lspProcess = mock(LSPProcess.class);
+        doReturn(lspProcess).when(lspProcessManager).createProcess(any(), any(), any(), any());
+        doReturn(lspProcess).when(lspProcessManager).getProcess(any());
+        LanguageServerWSEndPoint.setTestContext(lspProcessManager);
 
         System.setProperty("com.sap.lsp.cf.ws.token", "12345");
-        System.setProperty("com.sap.lsp.cf.ws.expirationDate", Long.toString(System.currentTimeMillis() + 60 * 60 * 1000));
-
-        // Mock lspProc.enqueueCall(message)
-        Mockito.doAnswer(new Answer<Void>() {
-            public Void answer(InvocationOnMock invocation) {
-                Object testMsg = invocation.getArguments()[0];
-                testMessage = (String) testMsg;
-                return null;
-            }
-        }).when(lspProcessMock).enqueueCall(any());
-        Mockito.doAnswer((Answer<Void>) invocation -> {
-            cleanUpCall = true;
-            return null;
-        }).when(procManagerMock).cleanProcess(any(), any(), any());
-        cut = new LanguageServerWSEndPoint();
-        setInternalState(cut, "langContexts", testUtil.getCtx());
-        setInternalState(cut, "procManager", procManagerMock);
+        System.setProperty("com.sap.lsp.cf.ws.expirationDate",
+                Long.toString(System.currentTimeMillis() + 60 * 60 * 1000));
     }
 
-    @AfterClass
-    public static void tearDownAfterClass() throws Exception {
-        //PowerMockito.
+    @Before
+    public void setup() {
+        when(testSession.getNegotiatedSubprotocol()).thenReturn("access_token");
+        Map<String, Object> reqProtocolMap = Collections.singletonMap(HandshakeRequest.SEC_WEBSOCKET_PROTOCOL,
+                Collections.singletonList("access_token,12345"));
+        when(endpointConfig.getUserProperties()).thenReturn(reqProtocolMap);
+        when(testSession.getBasicRemote()).thenReturn(remoteEndpoint);
+    }
+    
+    @Test
+    public void testOnOpen() throws IOException {
+        prepareLspRegPostStub(true);
+        doReturn("/").when(lspProcess).getProjPath();
+        
+        languageServerWSEndPoint.onOpen("testWS", "aLang", testSession, endpointConfig);
+        
+        verify(remoteEndpoint).sendText(READY_MESSAGE);
+        assertRequestBody("/:aLang=/testWS/aLang");
     }
 
     @Test
-    public void testLanguageServerWSEndPoint() {
-        //fail("Not yet implemented");
-    }
-
-    @Test
-    public void testOnOpen() {
-        // HttpClient for WSSynchronize notification
-        mockStatic(HttpClients.class);
-        expect(HttpClients.createSystem()).andReturn(dummyHttpClient);
-        replayAll();
-
-        doReturn("/").when(lspProcessMock).getProjPath();
-        cut.onOpen("testWS", "aLang", testSession, endpointConfig);
-        assertEquals(READY_MESSAGE, readyMessage);
-        assertEquals("Wrong registration data ", "/:aLang=/testWS/aLang", TestUtils.getInternalState(dummyHttpClient, "regData"));
-    }
-
-    @Test
-    public void testOnOpenP() {
-        // HttpClient for WSSynchronize notification
-        mockStatic(HttpClients.class);
-        expect(HttpClients.createSystem()).andReturn(dummyHttpClient);
-        replayAll();
-
-        doReturn("/myProj/").when(lspProcessMock).getProjPath();
-        cut.onOpen("testWS~myProj", "aLang", testSession, endpointConfig);
-        assertEquals(READY_MESSAGE, readyMessage);
-        assertEquals("Wrong registration data ", "/myProj/:aLang=/testWS~myProj/aLang", TestUtils.getInternalState(dummyHttpClient, "regData"));
+    public void testOnOpenP() throws IOException {
+        prepareLspRegPostStub(true);
+        doReturn("/myProj/").when(lspProcess).getProjPath();
+        
+        languageServerWSEndPoint.onOpen("testWS~myProj", "aLang", testSession, endpointConfig);
+        
+        verify(remoteEndpoint).sendText(READY_MESSAGE);
+        assertRequestBody("/myProj/:aLang=/testWS~myProj/aLang");
     }
 
     @Test
     public void testIllegalWorkspace() throws IOException {
-        final Session session = Mockito.mock(Session.class);
-        cut.onOpen("testWS&~myProj", "aLang", session, endpointConfig);
-        Mockito.verify(session, times(1)).close(any());
+        languageServerWSEndPoint.onOpen("testWS&~myProj", "aLang", testSession, endpointConfig);
+        
+        verify(testSession, times(1)).close(any());
     }
 
     @Test
-    public void testOnOpenM() {
-        // HttpClient for WSSynchronize notification
-        mockStatic(HttpClients.class);
-        expect(HttpClients.createSystem()).andReturn(dummyHttpClient);
-        replayAll();
-        doReturn("/myProj/myModule/").when(lspProcessMock).getProjPath();
-        cut.onOpen("testWS~myProj~myModule", "aLang", testSession, endpointConfig);
-        assertEquals(READY_MESSAGE, readyMessage);
-        assertEquals("Wrong registration data ", "/myProj/myModule/:aLang=/testWS~myProj~myModule/aLang", TestUtils.getInternalState(dummyHttpClient, "regData"));
+    public void testOnOpenM() throws IOException {
+        prepareLspRegPostStub(true);
+        doReturn("/myProj/myModule/").when(lspProcess).getProjPath();
+        
+        languageServerWSEndPoint.onOpen("testWS~myProj~myModule", "aLang", testSession, endpointConfig);
+        
+        verify(remoteEndpoint).sendText(READY_MESSAGE);
     }
 
     @Test
-    public void testOnMessage() {
-        String testMessage = "Content-Length: 113\r\n\r\n" +
-                "{\r\n" +
-                "\"jsonrpc\": \"2.0\",\r\n" +
-                "\"id\" : \"2\",\r\n" +
-                "\"method\" : \"workspace/symbol\",\r\n" +
-                "\"params\" : {\r\n" +
-                "\"query\": \"ProductService*\"\r\n" +
-                "}\r\n}";
-        cut.onMessage("testWS", "aLang", testMessage, testSession);
-        assertEquals(testMessage, LanguageServerWSEndPointTest.testMessage);
+    public void testOnMessage() throws LSPException {
+        String testMessage = "Content-Length: 113\r\n\r\n" + "{\r\n" + "\"jsonrpc\": \"2.0\",\r\n"
+                + "\"id\" : \"2\",\r\n" + "\"method\" : \"workspace/symbol\",\r\n" + "\"params\" : {\r\n"
+                + "\"query\": \"ProductService*\"\r\n" + "}\r\n}";
+        
+                languageServerWSEndPoint.onMessage("testWS", "aLang", testMessage, testSession);
+        
+        verify(lspProcess).enqueueCall(testMessage);
     }
 
     @Test
     public void testOnClose() {
-        cleanUpCall = false;
-        cut.onClose("testWS", "aLang", testSession, new CloseReason(CloseReason.CloseCodes.NO_STATUS_CODE, "test"));
-        assertTrue(cleanUpCall);
+        prepareLspRegPostStub(false);
+        
+        languageServerWSEndPoint.onClose("testWS", "aLang", testSession,
+                new CloseReason(CloseReason.CloseCodes.NO_STATUS_CODE, "test"));
+        
+        verify(lspProcessManager).cleanProcess(any(), any(), any());
     }
 
     @Test
     public void testOnError() {
-        cut.onError(testSession, new LSPException());
+        languageServerWSEndPoint.onError(testSession, new LSPException());
     }
 
     @Test
-    public void onOpenLsp_timeout() {
-        // HttpClient for WSSynchronize notification
-        mockStatic(HttpClients.class);
-        expect(HttpClients.createSystem()).andReturn(dummyHttpClient);
-        replayAll();
-
+    public void onOpenLsp_timeout() throws IOException {
+        prepareLspRegPostStub(true);
         Map<String, List<String>> reqParam = new HashMap<>();
         reqParam.put("lsp_timeout", Arrays.asList("100"));
-        Session testSessionTO = Mockito.spy(Session.class);
-        Mockito.when(testSessionTO.getRequestParameterMap()).thenReturn(reqParam);
-        Mockito.when(testSessionTO.getId()).thenReturn("0");
-        Mockito.when(testSessionTO.getNegotiatedSubprotocol()).thenReturn("access_token");
-        Mockito.when(testSessionTO.getBasicRemote()).thenReturn(remoteEndpointMock);
+        when(testSession.getRequestParameterMap()).thenReturn(reqParam);
+        when(testSession.getId()).thenReturn("0");
+        doReturn("/").when(lspProcess).getProjPath();
+        
+        languageServerWSEndPoint.onOpen("testWS", "aLang", testSession, endpointConfig);
 
-        doReturn("/").when(lspProcessMock).getProjPath();
-        cut.onOpen("testWS", "aLang", testSessionTO, endpointConfig);
-
-        Mockito.verify(testSessionTO, times(1)).setMaxIdleTimeout(100L);
-        assertEquals(READY_MESSAGE, readyMessage);
-        assertEquals("Wrong registration data ", "/:aLang=/testWS/aLang", TestUtils.getInternalState(dummyHttpClient, "regData"));
+        verify(testSession, times(1)).setMaxIdleTimeout(100L);
+        verify(remoteEndpoint).sendText(READY_MESSAGE);
+        assertRequestBody("/:aLang=/testWS/aLang");
     }
 
-    // ------------------------------------------------------------------------------------------------
-    public static void setInternalState(Object target, String field, Object value) {
-        Class<?> c = target.getClass();
-        try {
-            Field f = c.getDeclaredField(field);
-            f.setAccessible(true);
-            f.set(target, value);
-        } catch (Exception e) {
-            throw new RuntimeException(
-                    "Unable to set internal state on a private field. [...]", e);
-        }
+    private void prepareLspRegPostStub(Boolean register) {
+        stubFor(
+            post(urlEqualTo(wsSynchronizationUrl))
+                .withHeader("Register-lsp", equalTo(register.toString()))
+                .willReturn(aResponse().withStatus(200)));
+    }
+
+    private void assertRequestBody(String expectedRequestBody) throws UnsupportedEncodingException {
+        List<ServeEvent> allServeEvents = getAllServeEvents();
+        String encodedRequestBody = allServeEvents.get(0).getRequest().getBodyAsString();
+        String decodedRequeatBody = URLDecoder.decode(encodedRequestBody, StandardCharsets.UTF_8.toString());
+        assertEquals(expectedRequestBody, decodedRequeatBody);
     }
 
 }

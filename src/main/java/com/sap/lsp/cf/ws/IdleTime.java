@@ -10,7 +10,9 @@ import java.io.PrintWriter;
 
 @WebServlet(description = "Idle Time", urlPatterns = {"/IdleTime/*"})
 public class IdleTime extends HttpServlet {
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    private static final long serialVersionUID = 2900668164613437451L;
+
+	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         try (PrintWriter writer = response.getWriter()) {
             writer.write(Long.toString(IdleTimeHolder.getInstance().getIdleTime()));
         }

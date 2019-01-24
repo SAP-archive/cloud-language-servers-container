@@ -1,14 +1,12 @@
 package com.sap.lsp.cf.ws;
 
 import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -23,11 +21,6 @@ import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-import javax.json.Json;
-import javax.json.JsonObject;
-import javax.json.JsonReader;
-import javax.json.JsonString;
-import javax.json.JsonValue;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.MultipartConfig;
 import javax.servlet.annotation.WebServlet;
@@ -36,11 +29,11 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.Part;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.FilenameUtils;
-
 import com.sap.lsp.cf.ws.WSChangeObserver.ChangeType;
 import com.sap.lsp.cf.ws.WSChangeObserver.LSPDestination;
+
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 
 /**
  * Servlet implementation class WSSynchronization
@@ -51,78 +44,33 @@ import com.sap.lsp.cf.ws.WSChangeObserver.LSPDestination;
         maxRequestSize = 1024 * 1024 * 256)    // 256MB
 public class WSSynchronization extends HttpServlet {
     private static final long serialVersionUID = 1L;
-    private static final String SAVE_DIR = System.getenv("HOME") != null ? System.getenv("HOME") + "/di_ws_root" : System.getenv("HOMEPATH") + "/di_ws_root";
     private static final Logger LOG = Logger.getLogger(WSSynchronization.class.getName());
-    private static final String FS_STORAGE = "fs-storage";
-    private static final String FS_TAGS = "tags";
-    private static final String FS_LSP_WS = "LSP-WS";
-    private static final String FS_VOLUME_MOUNTS = "volume_mounts";
-    private static final String FS_CONTAINER_DIR = "container_dir";
     private static final String SYNC_FILE = ".sync";
+    private String WORKSPACE_ROOT = System.getenv("WORKSPACE_ROOT");
 
-    private String wsSaveDir = null;
-    private String saveDir;
     private Map<String, LSPDestination> lspDestPath = new ConcurrentHashMap<>();
+    private WebSocketClientFactory webSocketClientFactory = new WebSocketClientFactory();
 
     /**
      * @see HttpServlet#HttpServlet()
      */
     public WSSynchronization() {
         super();
-    }
-
-    @Override
-    public void init() throws ServletException {
-        String env_vcap_services = System.getenv("VCAP_SERVICES");
-        if (env_vcap_services != null) {
-            JsonObject volume0 = null;
-            JsonReader envReader = Json.createReader(new ByteArrayInputStream(env_vcap_services.getBytes(StandardCharsets.UTF_8)));
-            JsonObject cfVCAPEnv = envReader.readObject();
-            if (cfVCAPEnv.containsKey(FS_STORAGE)) {
-                JsonValue fs0 = cfVCAPEnv.getJsonArray(FS_STORAGE).get(0);
-                if (fs0 != null && fs0 instanceof JsonObject) {
-                    for (JsonValue tag : ((JsonObject) fs0).getJsonArray(FS_TAGS)) {
-                        if (((JsonString) tag).getString().equals(FS_LSP_WS) && ((JsonObject) fs0).containsKey(FS_VOLUME_MOUNTS)) {
-                            volume0 = (JsonObject) (((JsonObject) fs0).getJsonArray(FS_VOLUME_MOUNTS)).get(0);
-                            break;
-                        }
-                    }
-                    if (volume0 != null) {
-                        if (volume0.containsKey(FS_CONTAINER_DIR)) {
-                            String volPath = volume0.getString(FS_CONTAINER_DIR);
-                            File di_ws = new File(new File(volPath), "di_ws_root");
-                            if (!di_ws.exists()) {
-                                if (di_ws.mkdir()) {
-                                    wsSaveDir = di_ws.getAbsolutePath();
-                                }
-                            } else {
-                                wsSaveDir = di_ws.getAbsolutePath();
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        this.saveDir = wsSaveDir != null ? wsSaveDir + "/" : SAVE_DIR + "/";
-
-    }
-
-    protected String getSaveDir() {
-        return this.wsSaveDir;
-    }
-
-    void setSaveDir(String saveDir) {
-        this.wsSaveDir = saveDir;
+    } 
+    
+    void setTestContext(WebSocketClientFactory webSocketClientFactory,
+                        Map<String, LSPDestination> lspDestPath) throws ServletException {
+        this.webSocketClientFactory = webSocketClientFactory;
+        this.lspDestPath = lspDestPath;
     }
 
     /**
      * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse response)
      */
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        if (checkSync()) {
+        if (isWorkspaceSynced()) {
             response.setContentType("application/json");
-            String workspaceSaveDir = getWorkspaceSaveDir();
-            File syncFile = new File(new File(workspaceSaveDir), SYNC_FILE);
+            File syncFile = new File(new File(WORKSPACE_ROOT), SYNC_FILE);
             response.getWriter().append(String.format("{ \"syncTimestamp\": \"%s\"}", Files.getLastModifiedTime(syncFile.toPath()).toString()));
             response.setStatus(HttpServletResponse.SC_OK);
         } else {
@@ -130,19 +78,19 @@ public class WSSynchronization extends HttpServlet {
         }
     }
 
-    void initialSync(HttpServletRequest request, HttpServletResponse response, String workspaceRoot, String workspaceSaveDir) throws IOException, ServletException {
+    void initialSync(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
         // Expected: one part containing zip
         Part part = request.getParts().iterator().next();
         try (final InputStream inputStream = part.getInputStream()) {
-            syncWorkspace(inputStream, new File(workspaceSaveDir));
-            response.getWriter().append(workspaceRoot);
+            syncWorkspace(inputStream, new File(WORKSPACE_ROOT));
+            response.getWriter().append(WORKSPACE_ROOT);
             response.setStatus(HttpServletResponse.SC_CREATED);
         } catch (NoSuchElementException ePart) {
             response.setStatus(HttpServletResponse.SC_NOT_MODIFIED);
         }
     }
 
-    void cleanUpWS(Path rootPath) throws IOException {
+    private void cleanUpWS(Path rootPath) throws IOException {
         Files.walk(rootPath, FileVisitOption.FOLLOW_LINKS)
                 .sorted(Comparator.reverseOrder())
                 .filter((p) -> !p.equals(rootPath))
@@ -161,10 +109,9 @@ public class WSSynchronization extends HttpServlet {
             String requestURI = request.getRequestURI();
             LOG.info("Inside doPut with path " + requestURI);
             if (servletPath.equals(requestURI)) {
-                String workspaceSaveDir = getWorkspaceSaveDir();
-                initialSync(request, response, "file://" + workspaceSaveDir, workspaceSaveDir);
+                initialSync(request, response);
             } else if (requestURI.length() > servletPath.length()) {
-                if (!checkSync()) {
+                if (!isWorkspaceSynced()) {
                     response.setStatus(HttpServletResponse.SC_NO_CONTENT);
                     return;
                 }
@@ -176,14 +123,10 @@ public class WSSynchronization extends HttpServlet {
         }
     }
 
-    private String getWorkspaceSaveDir() {
-        return wsSaveDir != null ? wsSaveDir + "/" : SAVE_DIR;
-    }
-
     private void addNewFiles(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
         String artifactRelPath;
         artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1);
-        File destination = new File(FilenameUtils.normalize(this.saveDir + artifactRelPath));
+        File destination = new File(FilenameUtils.normalize(WORKSPACE_ROOT + "/" + artifactRelPath));
         if (destination.exists()) {
             LOG.warning("File to be added already exist: " + destination.getPath() +
                     ", can happen on project creation flow. Extracting new version...");
@@ -218,14 +161,13 @@ public class WSSynchronization extends HttpServlet {
         }
 
         // Otherwise process data passed from DI
-        if (!checkSync()) {
+        if (!isWorkspaceSynced()) {
             response.setStatus(HttpServletResponse.SC_NO_CONTENT);
             return;
         }
         String artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1);
-        String artifactPath = this.saveDir + artifactRelPath;
 
-        File destination = new File(FilenameUtils.normalize(artifactPath));
+        File destination = new File(FilenameUtils.normalize(WORKSPACE_ROOT + "/" + artifactRelPath));
         // Expected: one part containing zip
         try {
             Part part = request.getParts().iterator().next();
@@ -248,14 +190,13 @@ public class WSSynchronization extends HttpServlet {
      * @see HttpServlet#doDelete(HttpServletRequest request, HttpServletResponse response)
      */
     protected void doDelete(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        if (!checkSync()) {
+        if (!isWorkspaceSynced()) {
             response.setStatus(HttpServletResponse.SC_NO_CONTENT);
             return;
         }
 
         String artifactRelPath = request.getRequestURI().substring(request.getServletPath().length() + 1);
-        String artifactPath = this.saveDir + artifactRelPath;
-        File destination = new File(FilenameUtils.normalize(artifactPath));
+        File destination = new File(FilenameUtils.normalize(WORKSPACE_ROOT + "/" + artifactRelPath));
         try {
             FileUtils.forceDelete(destination);
         } catch (FileNotFoundException e) {
@@ -270,7 +211,7 @@ public class WSSynchronization extends HttpServlet {
         response.setContentType("application/json");
         response.getWriter().append(String.format("{ \"deleted\": \"%s\"}", artifactRelPath));
         WSChangeObserver changeObserver = new WSChangeObserver(ChangeType.CHANGE_DELETED, lspDestPath);
-        changeObserver.onChangeReported(artifactRelPath, this.saveDir);
+        changeObserver.onChangeReported(artifactRelPath, WORKSPACE_ROOT);
         changeObserver.notifyLSP();
         response.setStatus(HttpServletResponse.SC_OK);
     }
@@ -333,9 +274,9 @@ public class WSSynchronization extends HttpServlet {
     }
 
     private boolean extract(InputStream inputstream, WSChangeObserver changeObserver) {
-        final List<String> extracted = unpack(inputstream, new File(this.saveDir));
+        final List<String> extracted = unpack(inputstream, new File(WORKSPACE_ROOT));
         for (String artifactRelPath : extracted) {
-            changeObserver.onChangeReported(artifactRelPath, this.saveDir);
+            changeObserver.onChangeReported(artifactRelPath, WORKSPACE_ROOT);
         }
         return extracted.size() > 0;
     }
@@ -350,7 +291,7 @@ public class WSSynchronization extends HttpServlet {
             String path = pm[0];
             String dest = pm[1];
             if (bReg) {
-                lspDestPath.put(path, new LSPDestination(dest, WebSocketClient.getInstance()));
+                lspDestPath.put(path, new LSPDestination(dest, webSocketClientFactory.createInstance()));
                 LOG.info("WS Sync dest registered " + path + " dest " + dest);
             } else {
                 if (lspDestPath.remove(path) != null) LOG.info("WS Sync unregistered " + path);
@@ -358,15 +299,10 @@ public class WSSynchronization extends HttpServlet {
         } catch (IOException e) {
             LOG.severe("WS Sync - can't register LSP destination for notifications due to " + e.getMessage());
         }
-
-
     }
 
-    private boolean checkSync() {
-        String workspaceSaveDir = this.saveDir;
-        File fSyncts = new File(new File(workspaceSaveDir), SYNC_FILE);
-        return fSyncts.exists();
+    private boolean isWorkspaceSynced() {
+        return new File(new File(WORKSPACE_ROOT), SYNC_FILE).exists();
     }
-
 
 }

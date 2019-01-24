@@ -1,6 +1,8 @@
 package com.sap.lsp.cf.ws;
 
 import com.sap.lsp.cf.ws.LSPProcessManager.LSPProcess;
+
+import org.apache.commons.io.FilenameUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.ResponseHandler;
@@ -32,26 +34,33 @@ import java.util.regex.Pattern;
 public class LanguageServerWSEndPoint implements ServletContextListener {
 
     private static final Logger LOG = Logger.getLogger(LanguageServerWSEndPoint.class.getName());
+    private static final String LS_ROOT = System.getenv("LS_ROOT");
     private static final String ENV_LSP_SERVERS = "lspservers";
     private static final String LANG_CONTEXT = "langContext";
     private static final String LANG_SRV_PROCESS = "langServerProc";
+    private static final String DI_TOKEN_ENV = "DiToken";
 
     private static Map<String, LangServerCtx> langContexts = new HashMap<>();
-    private static final LSPProcessManager procManager = new LSPProcessManager(langContexts);
+    private static LSPProcessManager procManager = new LSPProcessManager(langContexts);
 
     static {
         if (System.getenv().containsKey(ENV_LSP_SERVERS)) {
             String langs[] = System.getenv(ENV_LSP_SERVERS).split(",");
-            for (String lang : langs) {
-                if (lang.length() > 0) langContexts.put(lang, new LangServerCtx(lang));
+            for (String languageId : langs) {
+                if (languageId.length() > 0)  {
+                    langContexts.put(languageId, new LangServerCtx(languageId, FilenameUtils.concat(LS_ROOT, languageId)));
+                }
             }
         }
+    }
+
+    static void setTestContext(LSPProcessManager procManager) {
+        LanguageServerWSEndPoint.procManager = procManager;
     }
 
     public LanguageServerWSEndPoint() {
         super();
     }
-
 
     @OnOpen
     public void onOpen(@PathParam("ws") String ws, @PathParam("lang") String lang, Session session, EndpointConfig endpointConfig) {
@@ -116,7 +125,6 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
                 return;
             }
         } catch (IOException closeErr) {
-            // TODO Auto-generated catch block
             LOG.severe("FATAL ERROR " + closeErr.getMessage());
             return;
         }
@@ -186,7 +194,6 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
 
     @Override
     public void contextDestroyed(ServletContextEvent sce) {
-        // TODO Auto-generated method stub
 
     }
 
@@ -207,9 +214,6 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
         String readyMsg = String.format(READY_MESSAGE_HEADER, msg.length(), msg);
         remote.sendText(readyMsg);
     }
-
-
-    private static final String DI_TOKEN_ENV = "DiToken";
 
     private void registerWSSyncListener(String procKey, String listenerPath, boolean onOff) {
         String diToken = System.getenv(DI_TOKEN_ENV);
@@ -238,7 +242,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
                 }
             };
             LOG.info("LSP notification registration sending to " + post.getRequestLine().toString() + " with token " + diToken);
-            String responseBody = httpClient.execute(post, responseHandler);
+            httpClient.execute(post, responseHandler);
         } catch (IOException ex) {
             LOG.severe("WS Notification listener registration error: " + ex.getMessage());
         }
@@ -250,6 +254,5 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
         Date expirationDate = new Date(Long.valueOf(System.getProperty("com.sap.lsp.cf.ws.expirationDate")));
         return (token.equals(System.getProperty("com.sap.lsp.cf.ws.token")) && date.before(expirationDate));
     }
-
 
 }

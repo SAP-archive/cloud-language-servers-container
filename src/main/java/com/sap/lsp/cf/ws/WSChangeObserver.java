@@ -15,7 +15,6 @@ class WSChangeObserver {
     private Map<LSPDestination, List<String>> destinations2Artifacts; // Map artifact -> url
     private ChangeType changeType;
 
-
     static class LSPDestination {
         private WebSocketClient client;
         private static String LSP_HOST = "ws://localhost:8080/LanguageServer";
@@ -83,9 +82,9 @@ class WSChangeObserver {
     /**
      * Registers artifact and maps to destination if corresponding LSP destination is listening
      */
-    void onChangeReported(String artifactRelPath, String saveDir) {
+    void onChangeReported(String artifactRelPath, String workspaceRoot) {
         String wsKey = "ws/" + artifactRelPath;
-        String artifactUrl = saveDir + artifactRelPath;
+        String artifactUrl = workspaceRoot + artifactRelPath;
         LOG.info(String.format("WS Sync Observer ws key %s artifact %s", wsKey, artifactUrl.substring(artifactUrl.lastIndexOf('/') + 1)));
         lspDestinations.entrySet().stream()
                 .filter(entry -> artifactFilter(entry, wsKey))
