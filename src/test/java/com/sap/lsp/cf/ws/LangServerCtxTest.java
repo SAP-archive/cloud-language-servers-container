@@ -1,71 +1,54 @@
 package com.sap.lsp.cf.ws;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
-import java.io.File;
-
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.apache.commons.io.FilenameUtils;
+import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 public class LangServerCtxTest {
 
-	private static LangServerCtx cut;
+	@Rule
+	public TemporaryFolder tempFolder = new TemporaryFolder();
 
-	@BeforeClass
-	public static void setUpBeforeClass() throws Exception {
-		cut = new LangServerCtx("aLang");
-		cut.setBaseDir(System.getProperty("user.dir") + File.separator + "src" + File.separator + "test");
-		cut.put("workdir", File.separator + "util");
-		cut.put("exec", File.separator + "util" + File.separator + "EchoLauncher1.sh");
-	}
+  	private LangServerCtx languageServerCtx;
 
-	@AfterClass
-	public static void tearDownAfterClass() throws Exception {
-	}
-
-	@Test
-	public void testLangServerCtx() {
-		assertNotNull("Constructor error", cut);
+	@Before
+	public void setup() throws Exception {
+		tempFolder.newFile("launcher.sh");
+		languageServerCtx = new LangServerCtx("java", tempFolder.getRoot().getPath());
 	}
 
 	@Test
 	public void testGetProcessBuilder() throws LSPException {
 		String[] wsElem = { "ws" };
-		ProcessBuilder pb;
-		pb = cut.getProcessBuilder(wsElem);
+		ProcessBuilder pb = languageServerCtx.getProcessBuilder(wsElem);
 		assertCommandLine(pb, " ws");
 	}
 
 	@Test
 	public void testGetProcessBuilderP() throws LSPException {
 		String[] wsElem = { "ws", "myProj" };
-		ProcessBuilder pb;
-		pb = cut.getProcessBuilder(wsElem);
+		ProcessBuilder pb = languageServerCtx.getProcessBuilder(wsElem);
 		assertCommandLine(pb, " ws myProj");
 	}
 
 	@Test
 	public void testGetProcessBuilderM() throws LSPException {
 		String[] wsElem = { "ws", "myProj", "myModule" };
-		ProcessBuilder pb;
-		pb = cut.getProcessBuilder(wsElem);
+		ProcessBuilder pb = languageServerCtx.getProcessBuilder(wsElem);
 		assertCommandLine(pb, " ws myProj myModule");
 	}
 
-	@Test
-	public void testGetRpcType() {
-		// fail("Not yet implemented");
-	}
-
 	private void assertCommandLine(ProcessBuilder pb, String expectParams) {
-		String exec = cut.getBaseDir() + cut.get("exec");
+		String LauncherPath = FilenameUtils.concat(tempFolder.getRoot().getPath(), LangServerCtx.LAUNCHER_FILE_NAME);
 		if (System.getProperty("os.name").substring(0, 3).equalsIgnoreCase("win")) {
-			assertEquals("cmd.exe /C " + exec + expectParams, String.join(" ", pb.command()));
+			assertEquals("cmd.exe /C " + LauncherPath + expectParams, String.join(" ", pb.command()));
 		} else {
-			assertEquals("/bin/bash " + exec + expectParams, String.join(" ", pb.command()));
+			assertEquals("/bin/bash " + LauncherPath + expectParams, String.join(" ", pb.command()));
 		}
-
 	}
 
 }

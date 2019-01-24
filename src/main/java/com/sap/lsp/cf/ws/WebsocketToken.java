@@ -10,6 +10,7 @@ import java.util.logging.Logger;
 
 @WebServlet(description = "Update token ", urlPatterns = {"/UpdateToken/*"})
 public class WebsocketToken extends HttpServlet {
+    private static final long serialVersionUID = 6782898662498610748L;
     private static final Logger LOG = Logger.getLogger(WebsocketToken.class.getName());
 
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {

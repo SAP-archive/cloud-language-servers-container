@@ -301,6 +301,8 @@ class LSPProcessManager {
 
                 case STREAM:
                     LOG.info("Using StdIn / StdOut streams");
+                case CLIENTSOCKET:
+                    LOG.info("Using ClientSocket for communication");
             }
 
             try {
@@ -310,7 +312,6 @@ class LSPProcessManager {
                     if (openCommunication != null) {
                         // Either Named pipes or Socket
                         openCommunication.join(30000L);
-                        // TODO LOG output and err
                         logHandler = new LogStreamHandler(process.getInputStream());
                         logHandler.start();
                         switch (this.ipc) {
@@ -380,7 +381,6 @@ class LSPProcessManager {
                     this.clientSocket.close();
                 }
             } catch (IOException closeEx) {
-                // TODO Auto-generated catch block
                 LOG.severe("IO Exception while cleanup: " + closeEx.toString());
             }
 
@@ -469,7 +469,7 @@ class LSPProcessManager {
         }
     }
 
-    @SuppressWarnings("unchecked")
+    //@SuppressWarnings("unchecked")
     void disconnect(String lang, String sessionOwnerId) {
         LOG.info("LSP Manager disconnect for session " + sessionOwnerId);
         Optional<Entry<String, LSPProcess>> optLspProc = lspProcesses.entrySet().stream().filter(p -> p.getValue().getLang().equals(lang)).findFirst();

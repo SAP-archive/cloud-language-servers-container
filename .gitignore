@@ -11,3 +11,12 @@ src/test/javascript/node_modules/
 /.idea/vcs.xml
 /.idea/jsLibraryMappings.xml
 /.idea/encodings.xml
+
+### Eclipse ###
+.settings/
+
+# Eclipse Core      
+.project
+
+# JDT-specific (Eclipse Java Development Tools)     
+.classpath

@@ -14,14 +14,6 @@ public class WebSocketClient {
     private String waitFor;
     private static final Logger LOG = Logger.getLogger(WebSocketClient.class.getName());
 
-    private WebSocketClient() {
-
-    }
-
-    static WebSocketClient getInstance() {
-        return new WebSocketClient();
-    }
-
     void connect(String uri) {
         try {
             WebSocketContainer container = ContainerProvider
