@@ -40,12 +40,3 @@ RUN tmp_file=xml.zip && \
     unzip -d $LS_ROOT/xml $tmp_file && \
     rm $tmp_file
 ENV LSPXML_protocol stream
-<<<<<<< HEAD
-=======
-
-# TODO workdir should be /ls/{language_id}
-#ENV LSPJAVA_WORKDIR java
-# TODO should always be /ls/{language_id}/launcher.sh
-#ENV LSPJAVA_EXEC java/launcher.sh
-
->>>>>>> b9d545853b7cabe89d3fb5a561d6b29ad1bba9b3
