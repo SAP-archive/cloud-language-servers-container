@@ -135,7 +135,7 @@ public class LanguageServerWSEndPointTest {
                 + "\"id\" : \"2\",\r\n" + "\"method\" : \"workspace/symbol\",\r\n" + "\"params\" : {\r\n"
                 + "\"query\": \"ProductService*\"\r\n" + "}\r\n}";
         
-                languageServerWSEndPoint.onMessage("testWS", "aLang", testMessage, testSession);
+        languageServerWSEndPoint.onMessage("testWS", "aLang", testMessage, testSession);
         
         verify(lspProcess).enqueueCall(testMessage);
     }
