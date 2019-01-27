@@ -11,6 +11,7 @@ src/test/javascript/node_modules/
 /.idea/vcs.xml
 /.idea/jsLibraryMappings.xml
 /.idea/encodings.xml
+/.vscode
 
 ### Eclipse ###
 .settings/

@@ -1,3 +1,4 @@
 *
 !target/LSPServerCF.war
 !ls/
+!docker-entrypoint.sh

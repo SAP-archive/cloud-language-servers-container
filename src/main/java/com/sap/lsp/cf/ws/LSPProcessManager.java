@@ -301,6 +301,7 @@ class LSPProcessManager {
 
                 case STREAM:
                     LOG.info("Using StdIn / StdOut streams");
+                    break;
                 case CLIENTSOCKET:
                     LOG.info("Using ClientSocket for communication");
             }

@@ -8,7 +8,9 @@ public class GetHttpSessionConfigurator extends ServerEndpointConfig.Configurato
 
     @Override
     public void modifyHandshake(ServerEndpointConfig config, HandshakeRequest request, HandshakeResponse response) {
-        config.getUserProperties().put(HandshakeRequest.SEC_WEBSOCKET_PROTOCOL, request.getHeaders().get(HandshakeRequest.SEC_WEBSOCKET_PROTOCOL));
+        if (LanguageServerWSEndPoint.AUTH_ENABLED) {
+            config.getUserProperties().put(HandshakeRequest.SEC_WEBSOCKET_PROTOCOL, request.getHeaders().get(HandshakeRequest.SEC_WEBSOCKET_PROTOCOL));
+        }
     }
 
 }

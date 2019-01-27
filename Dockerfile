@@ -3,9 +3,6 @@ FROM tomcat:8-jre8-alpine
 ENV WORKSPACE_ROOT /projects
 ENV LS_ROOT /ls
 
-RUN rm -rf /usr/local/tomcat/webapps/*
-COPY target/LSPServerCF.war /usr/local/tomcat/webapps/ROOT.war
-
 RUN apk --no-cache add nodejs nodejs-npm
 
 RUN mkdir $WORKSPACE_ROOT $LS_ROOT
@@ -40,3 +37,10 @@ RUN tmp_file=xml.zip && \
     unzip -d $LS_ROOT/xml $tmp_file && \
     rm $tmp_file
 ENV LSPXML_protocol stream
+
+COPY docker-entrypoint.sh .
+
+RUN rm -rf /usr/local/tomcat/webapps/*
+COPY target/LSPServerCF.war /usr/local/tomcat/webapps/ROOT.war
+
+ENTRYPOINT ["/bin/sh", "docker-entrypoint.sh"]

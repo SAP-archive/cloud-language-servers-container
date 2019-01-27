@@ -51,13 +51,6 @@ class LangServerCtx extends HashMap<String, String> {
         pb.directory(new File(this.workdir));
         pb.redirectErrorStream(true);
 
-        // Check if parent env is passed to process
-        //Map<String, String> env = pb.environment();
-        //TODO JAVA_HOME is relevant only to JDT. find a way to send it from build pack
-        //env.put("JAVA_HOME", System.getProperty("java.home"));
-        //LOG.info("JAVA_HOME " + System.getProperty("java.home"));
-        //env.putAll(this);
-
         return pb;
     }
 

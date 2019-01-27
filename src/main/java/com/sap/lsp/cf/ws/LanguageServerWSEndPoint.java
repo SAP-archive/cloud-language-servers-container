@@ -39,6 +39,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
     private static final String LANG_CONTEXT = "langContext";
     private static final String LANG_SRV_PROCESS = "langServerProc";
     private static final String DI_TOKEN_ENV = "DiToken";
+    public static final Boolean AUTH_ENABLED = !("false".equals(System.getenv("AUTH_ENABLED")));
 
     private static Map<String, LangServerCtx> langContexts = new HashMap<>();
     private static LSPProcessManager procManager = new LSPProcessManager(langContexts);
@@ -65,7 +66,7 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
     @OnOpen
     public void onOpen(@PathParam("ws") String ws, @PathParam("lang") String lang, Session session, EndpointConfig endpointConfig) {
         long sessionTimeout = 70000L; //Timeout by default
-
+        
         try {
             final String allowedPattern = "[0-9A-Za-z@.\\-~_]+";
             if (!Pattern.matches(allowedPattern, ws)) {
@@ -95,39 +96,42 @@ public class LanguageServerWSEndPoint implements ServletContextListener {
                 sessionTimeout = Long.parseLong(reqParam.get("lsp_timeout").get(0));
             }
 
-            @SuppressWarnings("unchecked")
-            List<String> requestedProtocols = (List<String>) endpointConfig.getUserProperties()
-                    .get(HandshakeRequest.SEC_WEBSOCKET_PROTOCOL);
-            if (requestedProtocols != null && requestedProtocols.size() > 0) {
-                String secWSToken = requestedProtocols.get(0);
-                if (secWSToken.startsWith(subProtocol) && secWSToken.contains(",")) {
-                    try {
-                        secWSToken = URLDecoder.decode((secWSToken.split(",")[1]).trim(), "UTF-8");
-                        if (!validateWSSecurityToken(secWSToken)) {
-                            LOG.severe("SECURITY TOKEN is invalid ");
-                            session.close(new CloseReason(CloseCodes.CANNOT_ACCEPT, "Security token is invalid"));
+            if (AUTH_ENABLED) {
+                @SuppressWarnings("unchecked")
+                List<String> requestedProtocols = (List<String>) endpointConfig.getUserProperties()
+                        .get(HandshakeRequest.SEC_WEBSOCKET_PROTOCOL);
+                if (requestedProtocols != null && requestedProtocols.size() > 0) {
+                    String secWSToken = requestedProtocols.get(0);
+                    if (secWSToken.startsWith(subProtocol) && secWSToken.contains(",")) {
+                        try {
+                            secWSToken = URLDecoder.decode((secWSToken.split(",")[1]).trim(), "UTF-8");
+                            if (!validateWSSecurityToken(secWSToken)) {
+                                LOG.severe("SECURITY TOKEN is invalid ");
+                                session.close(new CloseReason(CloseCodes.CANNOT_ACCEPT, "Security token is invalid"));
+                                return;
+                            }
+                        } catch (UnsupportedEncodingException e) {
+                            LOG.severe("SUB-PROTOCOL error " + e.getMessage());
+                            session.close(new CloseReason(CloseCodes.CANNOT_ACCEPT, "Sub-protocol error"));
                             return;
                         }
-                    } catch (UnsupportedEncodingException e) {
-                        LOG.severe("SUB-PROTOCOL error " + e.getMessage());
+                        LOG.info("Security Token " + secWSToken);
+                    } else {
+                        LOG.severe("SUB-PROTOCOL error ");
                         session.close(new CloseReason(CloseCodes.CANNOT_ACCEPT, "Sub-protocol error"));
                         return;
                     }
-                    LOG.info("Security Token " + secWSToken);
                 } else {
                     LOG.severe("SUB-PROTOCOL error ");
                     session.close(new CloseReason(CloseCodes.CANNOT_ACCEPT, "Sub-protocol error"));
                     return;
                 }
-            } else {
-                LOG.severe("SUB-PROTOCOL error ");
-                session.close(new CloseReason(CloseCodes.CANNOT_ACCEPT, "Sub-protocol error"));
-                return;
             }
         } catch (IOException closeErr) {
             LOG.severe("FATAL ERROR " + closeErr.getMessage());
             return;
         }
+        
         LOG.info(String.format("LSP: create Head Process for lang %s session %s", lang, session.getId()));
 
         // set timeout
