@@ -43,7 +43,7 @@ Mocha integration tests can be run from intellij run configuration:
 * Go to one of the suites under `src/test/javascript/test` and run/debug using mocha
 
 ## Snapshots deployment job
-https://jaas.wdf.sap.corp:50311/job/LSPServerCF_Deploy_Snapshot/
+https://gkemonaco.jaas-gcp.cloud.sap.corp/job/LSPServerCF_Deploy_Snapshot/
   
 ## Run server locally
   `mvn jetty:run -Pintegration-test`
