@@ -1,4 +1,6 @@
 [![Build Status](https://travis-ci.org/SAP/cloud-language-servers-container.svg?branch=master)](https://travis-ci.org/SAP/cloud-language-servers-container)
+[![REUSE status](https://api.reuse.software/badge/github.com/SAP/cloud-language-servers-container)](https://api.reuse.software/info/github.com/SAP/cloud-language-servers-container)
+
 # Description
 
 The [language server protocol](https://github.com/Microsoft/language-server-protocol) has several implementations for various technologies. Their communication protocols are low level like socket to socket and stdin/stdout. In addition they are targeted at running on the developer machine and not on cloud environment.  cloud-language-servers-container is a wrapper server that can run inside an isolated container. It exposes language servers functionality through web socket and REST APIs. The solution covers exposing the language servers, synchronization of source code, security aspects, isoation, etc.
@@ -68,5 +70,4 @@ For bugs, questions and ideas for enhancement please open an issue in github.
 * Remove CloudFoundry specific code
 
 # License
-Copyright (c) 2017 SAP SE or an SAP affiliate company. All rights reserved.
-This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the [LICENSE file](./LICENSES/Apache-2.0.txt)
+Copyright (c) 2017-2021 SAP SE or an SAP affiliate company and cloud-language-servers-container contributors. Please see our [LICENSE](LICENSE) for copyright and license information. Detailed information including third-party components and their licensing/copyright information is available [via the REUSE tool](https://api.reuse.software/info/github.com/SAP/cloud-language-servers-container).
