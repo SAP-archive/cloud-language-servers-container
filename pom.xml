@@ -10,7 +10,7 @@
     <distributionManagement>
         <snapshotRepository>
             <id>deploy.snapshots</id>
-            <url>http://nexus.wdf.sap.corp:8081/nexus/content/repositories/deploy.snapshots/</url>
+            <url>https://nexus.wdf.sap.corp:8081/nexus/content/repositories/deploy.snapshots/</url>
         </snapshotRepository>
     </distributionManagement>
     <properties>
