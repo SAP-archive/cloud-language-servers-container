@@ -304,6 +304,9 @@ public class WSSynchronization extends HttpServlet {
         try (ZipInputStream zipInputStream = new ZipInputStream(zipStream)) {
             while ((zipentry = zipInputStream.getNextEntry()) != null) {
                 File newFile = new File(destination, zipentry.getName());
+                if (!newFile.toPath().normalize().startsWith(destination.toPath().normalize())) {
+                    throw new IOException("Bad zip entry");
+                }
                 LOG.info("UNZIP Creating " + newFile.getAbsolutePath());
 
                 if (zipentry.isDirectory()) {
